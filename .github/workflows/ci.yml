@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install system tools used by integration tests
+        run: command -v lsof || (sudo apt-get update && sudo apt-get install -y lsof)
+      - name: Configure git for the tests that commit to a bare repository
+        run: |
+          git config --global user.name "grooveloop-ci"
+          git config --global user.email "ci@grooveloop.invalid"
+          git config --global init.defaultBranch master
+      - run: uv sync --locked
+      - run: make check-style
+      - run: make check-format
+      - run: make check-types
+      - run: make test
+
+  package:
+    name: Build and smoke-test the package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - run: uv build
+      - name: Install the wheel in a clean environment and run it
+        run: |
+          uv venv /tmp/smoke
+          uv pip install --python /tmp/smoke/bin/python dist/*.whl
+          /tmp/smoke/bin/grooveloop --help
+          /tmp/smoke/bin/python -c "from importlib.resources import files; assert (files('grooveloop') / 'shared/infrastructure/agent_profiles/developer.md').is_file()"

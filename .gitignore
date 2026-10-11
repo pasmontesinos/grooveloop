@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Tooling caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Virtualenv / uv
+.venv/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Superpowers (local plans and specs, not versioned)
+docs/superpowers/
+.superpowers/
+
+# claude plugin eval results
+plugins/grooveloop/evals/results/
+
+# Hypothesis example database
+.hypothesis/

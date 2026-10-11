@@ -1,0 +1,14 @@
+{
+  "name": "grooveloop",
+  "description": "Claude Code plugins published by the grooveloop repository",
+  "owner": {
+    "name": "Pascual Montesinos"
+  },
+  "plugins": [
+    {
+      "name": "grooveloop",
+      "source": "./plugins/grooveloop",
+      "description": "Skills that describe the contract of the grooveloop orchestrator"
+    }
+  ]
+}

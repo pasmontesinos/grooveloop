@@ -1,0 +1,32 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from grooveloop.shared.application.commands.command import Command
+from grooveloop.shared.application.commands.command_handler import CommandHandler
+from grooveloop.slicing.domain.exceptions import StoryNotFoundError
+from grooveloop.slicing.domain.story_id import StoryId
+
+if TYPE_CHECKING:
+    from grooveloop.slicing.domain.story_repository import StoryRepository
+
+
+@dataclass(frozen=True)
+class CreateSlicesFromSpecCommand(Command):
+    story_id: str
+    verify_deploy: bool = False
+
+
+class CreateSlicesFromSpecCommandHandler(CommandHandler[CreateSlicesFromSpecCommand, None]):
+    def __init__(self, story_repository: StoryRepository) -> None:
+        self._story_repository = story_repository
+
+    def __call__(self, command: CreateSlicesFromSpecCommand) -> None:
+        story = self._story_repository.find(StoryId(command.story_id))
+        if story is None:
+            raise StoryNotFoundError(f"Story {command.story_id} not found")
+
+        story.materialize_slices(verify_deploy=command.verify_deploy)
+
+        self._story_repository.save(story)

@@ -1,0 +1,12 @@
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from grooveloop.verification.domain.merged_slice import MergedSlice
+
+
+class MergedSliceSignal(ABC):
+    @abstractmethod
+    def merged_slices(self) -> list[MergedSlice]: ...
