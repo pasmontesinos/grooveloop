@@ -19,5 +19,10 @@ class TestReleaseMetadata:
 
         assert plugin.get("version") == _project()["version"]
 
+    def test_the_release_please_manifest_declares_the_version_of_the_package(self) -> None:
+        manifest = json.loads((_ROOT / ".release-please-manifest.json").read_text())
+
+        assert manifest.get(".") == _project()["version"]
+
     def test_the_package_publishes_the_readme_as_its_description(self) -> None:
         assert _project().get("readme") == "README.md"

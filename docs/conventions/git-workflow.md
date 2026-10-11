@@ -49,12 +49,20 @@ refactor(delivery): close abandoned runs in their own tick step so detectors onl
 
 Versions follow [Semantic Versioning](https://semver.org/). While the version is `0.x`, a change to the contract with GitHub (spec format, labels, directives, report headings) or to the CLI flags bumps the minor version; anything else bumps the patch version.
 
-The version lives in two places that must match: `version` in `pyproject.toml` and `version` in `plugins/grooveloop/.claude-plugin/plugin.json`. `tests/grooveloop/test_release_metadata.py` fails when they differ.
+release-please (`.github/workflows/release-please.yml`) computes the version from the Conventional Commits on `master`. While the version is `0.x`:
+
+- `feat` and `fix` bump the patch version.
+- A contract or CLI flag change is marked as breaking (`feat!:`, or a `BREAKING CHANGE:` footer) and bumps the minor version.
+- The other types do not release.
+
+The version lives in four places that must match: `pyproject.toml`, `plugins/grooveloop/.claude-plugin/plugin.json`, the `grooveloop` entry of `uv.lock` and `.release-please-manifest.json`. release-please bumps all four (`release-please-config.json`); `tests/grooveloop/test_release_metadata.py` fails when the plugin or the manifest differ from the package, and `uv sync --locked` fails when the lock does.
 
 **To release:**
 
-1. Open a Pull Request that bumps both versions, titled `chore(release): vX.Y.Z`, and merge it when CI is green.
-2. Tag the merge commit on `master` and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
-3. The `Release` workflow (`.github/workflows/release.yml`) checks that the tag matches both versions, runs the full validation, builds the distribution, publishes it to PyPI through Trusted Publishing (environment `pypi`) and creates the GitHub release with generated notes.
+1. On every push to `master`, release-please opens or updates the Pull Request `chore(release): vX.Y.Z` with the bumped versions and the `CHANGELOG.md` entry.
+2. Merge it when CI is green. release-please tags the merge commit and creates the GitHub release.
+3. The tag runs the `Release` workflow (`.github/workflows/release.yml`): it checks that the tag matches the versions, runs the full validation, builds the distribution, publishes it to PyPI through Trusted Publishing (environment `pypi`, which waits for the approval of a reviewer) and attaches the distribution to the GitHub release.
 
-Never publish from a local machine and never store a PyPI token in the repository: Trusted Publishing is the only publishing path.
+release-please runs with the `RELEASE_PLEASE_TOKEN` secret, a fine-grained token with write access to contents and pull requests of this repository: with the default `GITHUB_TOKEN`, its Pull Request does not run CI and its tag does not run the `Release` workflow.
+
+Never edit the versions by hand, never publish from a local machine and never store a PyPI token in the repository: Trusted Publishing is the only publishing path.
