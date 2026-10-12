@@ -4,6 +4,8 @@ A CLI orchestrator that **drives the software delivery cycle of a change by dele
 
 GitHub holds the state of every Story and slice, and Claude Code is the default agent engine (opencode is the other one). Both sit behind ports, so persistence and agents can change without touching the core.
 
+The story behind it, and a tour of how it works, live on the website: [grooveloop.pasmontesinos.com](https://grooveloop.pasmontesinos.com).
+
 ## A personal loop
 
 grooveloop is my own way of working with coding agents, turned into a tool. I used to steer the agent in real time, in the same session where the code was being written. As models got better and the repository conventions sharpened with every correction I wrote down, it made more sense to put the weight on the spec and delegate the implementation, until it ran on autopilot up to the pull request. What was left was coordination: handing over the spec, launching, reviewing, launching the next slice, one repetitive prompt after another. grooveloop was born to replace that coordination. Correction rounds, parallel slices and lessons came later, almost on their own. I keep refining it with every change it delivers.

@@ -26,6 +26,7 @@ dependencies = [
 ]
 
 [project.urls]
+Homepage = "https://grooveloop.pasmontesinos.com"
 Repository = "https://github.com/pasmontesinos/grooveloop"
 
 [project.scripts]
