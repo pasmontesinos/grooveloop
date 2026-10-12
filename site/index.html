@@ -123,29 +123,12 @@
   .bookend p, .bookend li { color: var(--muted); font-size: 15.5px; }
   .bookend ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
   .bookend code { color: var(--cyan); font-size: .85em; }
-  .contract { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-top: 16px; }
-  @media (max-width: 760px) { .contract { grid-template-columns: minmax(0,1fr); } }
-  .verb { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px 28px; display: grid; gap: 10px; min-width: 0; }
-  .verb .big { font: 800 clamp(30px, 4.5vw, 46px)/1 var(--display); letter-spacing: -.02em; }
-  .verb .big span { color: var(--dim); font-weight: 400; }
-  .verb.merge .big b { color: var(--cyan); text-shadow: 0 0 24px rgba(0,229,255,.55); }
-  .verb.close .big b { color: var(--pink); text-shadow: 0 0 24px rgba(255,107,157,.5); }
-  .verb p { color: var(--muted); font-size: 15px; }
-  .verb code { color: var(--cyan); font-size: .85em; }
 
   /* cycle */
   .cycle { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 48px; align-items: center; }
   @media (max-width: 880px) { .cycle { grid-template-columns: minmax(0,1fr); } }
   .groove-art { display: flex; justify-content: center; }
   .groove-art svg { width: 100%; max-width: 420px; height: auto; }
-  .states { display: grid; border-top: 1px solid var(--line); }
-  .state { display: grid; grid-template-columns: 26px 190px minmax(0,1fr); gap: 12px; padding-block: 13px; border-bottom: 1px solid var(--line); align-items: baseline; }
-  @media (max-width: 560px) { .state { grid-template-columns: 22px minmax(0,1fr); } .state p { grid-column: 2; } }
-  .state .g { font: 400 17px/1 var(--mono); color: var(--cyan); }
-  .state code { font-weight: 700; font-size: 13.5px; }
-  .state p { color: var(--muted); font-size: 14.5px; }
-  .state p code { font-weight: 500; color: var(--cyan); }
-  .state.warn .g { color: var(--amber); } .state.bad .g { color: var(--pink); } .state.done .g { color: var(--green); text-shadow: 0 0 10px rgba(105,240,174,.6); }
 
   /* capabilities */
   .features { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 36px 34px; }
@@ -158,14 +141,6 @@
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .chip { font: 500 12px/1 var(--mono); padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
   .chip.glow { border-color: #0a5a66; color: var(--cyan); box-shadow: 0 0 12px rgba(0,229,255,.25); }
-  .facts { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); margin-top: 56px; border-block: 1px solid var(--line); }
-  @media (max-width: 760px) { .facts { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-  .fact { padding: 22px 20px; border-left: 1px solid var(--line); display: grid; gap: 4px; min-width: 0; }
-  .fact:first-child { border-left: 0; }
-  @media (max-width: 760px) { .fact:nth-child(3) { border-left: 0; } .fact:nth-child(n+3) { border-top: 1px solid var(--line); } }
-  .fact b { font: 800 38px/1 var(--display); font-variant-numeric: tabular-nums; background: linear-gradient(90deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .fact span { font-size: 13.5px; color: var(--muted); }
-  .fact code { color: var(--dim); font-size: 11.5px; }
 
   /* cockpit mockup */
   .cockpit { background: #040407; border: 1px solid #23233a; border-radius: 14px; overflow: hidden;
@@ -259,6 +234,10 @@
   .gh:hover { border-color: var(--cyan); color: var(--cyan); text-decoration: none; }
   .gh svg { width: 15px; height: 15px; fill: currentColor; }
   @media (max-width: 800px) { .gh { margin-left: 8px; } }
+  .label.sub { display: block; margin: 48px 0 18px; color: var(--muted); text-shadow: none; }
+  .features.caps { margin-top: 64px; }
+  .sec-head + .label.sub { margin-top: 0; }
+  .uses .chip { padding: 5px 11px; border-radius: 999px; }
   .uses { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
   footer a { color: var(--muted); }
   footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; margin-top: 64px; padding-top: 26px; border-top: 1px solid var(--line); font: 500 12.5px/1.6 var(--mono); color: var(--dim); }
@@ -280,14 +259,12 @@
       grooveloop
     </span>
     <ul>
-      <li><a href="#chores"><span class="en">What it automates</span><span class="es">Qué automatiza</span></a></li>
-      <li><a href="#yours"><span class="en">What stays yours</span><span class="es">Lo tuyo</span></a></li>
-      <li><a href="#cycle"><span class="en">The cycle</span><span class="es">El ciclo</span></a></li>
+      <li><a href="#split"><span class="en">The split</span><span class="es">El reparto</span></a></li>
       <li><a href="#conventions"><span class="en">Conventions</span><span class="es">Convenciones</span></a></li>
       <li><a href="#agents"><span class="en">Agents</span><span class="es">Agentes</span></a></li>
       <li><a href="#cockpit"><span class="en">The cockpit</span><span class="es">El cockpit</span></a></li>
       <li><a href="#install"><span class="en">Install</span><span class="es">Instalar</span></a></li>
-      <li><a href="#name"><span class="en">Why the name</span><span class="es">Por qué el nombre</span></a></li>
+      <li><a href="#story"><span class="en">The story</span><span class="es">La historia</span></a></li>
     </ul>
     <div class="lang" role="group" aria-label="Language">
       <button type="button" class="lang-btn on" data-lang="en">EN</button>
@@ -306,7 +283,7 @@
       </p>
       <div class="ctas">
         <a class="btn primary" href="#install"><span class="en">Install grooveloop</span><span class="es">Instalar grooveloop</span></a>
-        <a class="btn ghost" href="#chores"><span class="en">See what it automates</span><span class="es">Ver qué automatiza</span></a>
+        <a class="btn ghost" href="#split"><span class="en">See how it works</span><span class="es">Ver cómo funciona</span></a>
       </div>
       <div class="hero-notes">
         <span><span class="en">You think the Spec</span><span class="es">Tú piensas la Spec</span></span>
@@ -327,36 +304,16 @@
     </figure>
   </header>
 
-  <section id="personal">
+  <section id="split">
     <div class="sec-head">
-      <span class="label"><span class="en">A personal loop</span><span class="es">Un loop personal</span></span>
-      <h2><span class="en">My way of working with agents, turned into a tool.</span><span class="es">Mi forma de trabajar con agentes, convertida en herramienta.</span></h2>
+      <span class="label"><span class="en">The split</span><span class="es">El reparto</span></span>
+      <h2><span class="en">The loop coordinates. You decide.</span><span class="es">El loop coordina. Tú decides.</span></h2>
       <p>
-        <span class="en">It started when I was carrying specs, slices, implementations, reviews and deliveries by hand across several agent sessions at once: steps got forgotten and sessions stalled. I automated that workflow, and I keep refining it with every change it delivers.</span>
-        <span class="es">Empezó cuando llevaba a mano specs, slices, implementaciones, revisiones y entregas por varias sesiones de agente a la vez: se olvidaban pasos y las sesiones se quedaban atascadas. Automaticé ese flujo, y lo sigo refinando con cada cambio que entrega.</span>
-      </p>
-      <p>
-        <span class="en">It is not a loop to hand everything over to the agents. It is <strong>a loop with control and continuous improvement</strong>: you think the spec, your merge is the decision, and every redirection can become a convention the next slice already knows.</span>
-        <span class="es">No es un loop para delegarlo todo en los agentes. Es <strong>un loop con control y mejora continua</strong>: tú piensas la spec, tu merge es la decisión, y cada redirección puede convertirse en una convención que la siguiente slice ya conoce.</span>
+        <span class="en">Walking an agent through a multi-slice change is coordination work, not engineering. The loop does it on every tick, with explicit rules you configure, and the state of every slice lives in its sub-issue labels. Nothing merges without you, unless you opt into <code>--auto-merge</code>.</span>
+        <span class="es">Conducir a un agente por un cambio de varias slices es trabajo de coordinación, no de ingeniería. El loop lo hace en cada tick, con reglas explícitas que tú configuras, y el estado de cada slice vive en las labels de su sub-issue. Nada se mergea sin ti, salvo que actives <code>--auto-merge</code>.</span>
       </p>
     </div>
-    <div class="uses">
-      <span class="chip glow"><span class="en">in daily use</span><span class="es">en uso diario</span></span>
-      <span class="chip"><span class="en">experiments</span><span class="es">experimentos</span></span>
-      <span class="chip"><span class="en">personal projects</span><span class="es">proyectos personales</span></span>
-      <span class="chip"><span class="en">high-impact production projects</span><span class="es">proyectos con alto impacto en producción</span></span>
-    </div>
-  </section>
-
-  <section id="chores">
-    <div class="sec-head">
-      <span class="label"><span class="en">What you stop doing</span><span class="es">Lo que te quitas de encima</span></span>
-      <h2><span class="en">Everything you did between the Spec and the merge.</span><span class="es">Todo lo que hacías entre la Spec y el merge.</span></h2>
-      <p>
-        <span class="en">Walking an agent through a multi-slice change is coordination work, not engineering. The loop does it on every tick, with explicit rules you configure.</span>
-        <span class="es">Conducir a un agente por un cambio de varias slices es trabajo de coordinación, no de ingeniería. El loop lo hace en cada tick, con reglas explícitas que tú configuras.</span>
-      </p>
-    </div>
+    <span class="label sub"><span class="en">What the loop does</span><span class="es">Lo que hace el loop</span></span>
     <div class="chores">
       <div class="chore"><span class="was"><span class="en">pasting each slice into a prompt</span><span class="es">copiar cada slice en un prompt</span></span>
         <h3><span class="en">Writes each assignment</span><span class="es">Redacta cada encargo</span></h3>
@@ -377,13 +334,7 @@
         <h3><span class="en">Continues after your merge</span><span class="es">Continúa tras tu merge</span></h3>
         <p><span class="en">The tick detects your merge and dispatches whatever the graph frees. The Story closes when nothing is left alive.</span><span class="es">El tick detecta tu merge y despacha lo que el grafo libera. La Story se cierra cuando no queda nada vivo.</span></p></div>
     </div>
-  </section>
-
-  <section id="yours">
-    <div class="sec-head">
-      <span class="label"><span class="en">What stays yours</span><span class="es">Lo que queda tuyo</span></span>
-      <h2><span class="en">The two parts that deserve your head.</span><span class="es">Las dos partes que merecen tu cabeza.</span></h2>
-    </div>
+    <span class="label sub"><span class="en">What stays yours</span><span class="es">Lo que queda tuyo</span></span>
     <div class="bookends">
       <div class="bookend">
         <span class="when"><span class="en">Before · creative</span><span class="es">Antes · creativo</span></span>
@@ -400,47 +351,9 @@
         <p><span class="en">You review each PR on GitHub web, as you already do. If the agent took a path you don't want, you mark another one. Your decision is the only thing that moves the loop forward.</span><span class="es">Revisas cada PR en GitHub web, como ya haces. Si el agente tomó un camino que no quieres, le marcas otro. Tu decisión es lo único que hace avanzar el loop.</span></p>
         <ul>
           <li><span class="en"><code>/grooveloop-implement</code> sends the agent back with your comments.</span><span class="es"><code>/grooveloop-implement</code> devuelve al agente con tus comentarios.</span></li>
+          <li><span class="en"><b>merge</b> approves and <b>close</b> rejects. A rejected slice keeps its branch: the loop never deletes work.</span><span class="es"><b>merge</b> aprueba y <b>close</b> rechaza. Una slice rechazada conserva su rama: el loop nunca borra trabajo.</span></li>
           <li><span class="en"><code>/grooveloop-learn</code> turns a redirection into a repo convention, via a PR you review.</span><span class="es"><code>/grooveloop-learn</code> convierte una redirección en convención del repo, vía una PR que tú revisas.</span></li>
         </ul>
-      </div>
-    </div>
-    <div class="contract">
-      <div class="verb merge"><div class="big"><b>merge</b> <span>=</span> <span class="en">approve</span><span class="es">aprobar</span></div>
-        <p><span class="en">The slice turns <code>merged</code> and the loop dispatches the next work the graph frees.</span><span class="es">La slice pasa a <code>merged</code> y el loop despacha el siguiente trabajo que el grafo libera.</span></p></div>
-      <div class="verb close"><div class="big"><b>close</b> <span>=</span> <span class="en">reject</span><span class="es">rechazar</span></div>
-        <p><span class="en">The slice ends without a merge. The work stays on its branch: the loop never deletes it.</span><span class="es">La slice termina sin merge. El trabajo queda en su rama: el loop nunca lo borra.</span></p></div>
-    </div>
-  </section>
-
-  <section id="cycle">
-    <div class="sec-head">
-      <span class="label"><span class="en">The slice lifecycle</span><span class="es">El ciclo de vida de la slice</span></span>
-      <h2><span class="en">Explicit checkpoints, visible in GitHub.</span><span class="es">Puntos de control explícitos, visibles en GitHub.</span></h2>
-      <p>
-        <span class="en">Each slice moves through a state machine, and its state lives in the sub-issue labels. You see in GitHub exactly what the loop sees — and nothing merges without you, unless you opt into <code>--auto-merge</code>.</span>
-        <span class="es">Cada slice avanza por una máquina de estados, y su estado vive en las labels de la sub-issue. Tú ves en GitHub lo mismo que ve el loop — y nada se mergea sin ti, salvo que actives <code>--auto-merge</code>.</span>
-      </p>
-    </div>
-    <div class="cycle">
-      <div class="groove-art">
-        <svg viewBox="0 0 420 420" role="img" aria-label="Concentric groove with the pulse at the center">
-          <circle cx="210" cy="210" r="190" fill="none" stroke="#1c1c2c" stroke-width="1.5"/>
-          <circle cx="210" cy="210" r="150" fill="none" stroke="#23233a" stroke-width="1.5"/>
-          <circle cx="210" cy="210" r="110" fill="none" stroke="#2c2c47" stroke-width="1.5"/>
-          <circle cx="210" cy="210" r="70" fill="none" stroke="#b388ff" stroke-width="2" style="filter:drop-shadow(0 0 8px rgba(179,136,255,.8))"/>
-          <circle class="pulse-dot" cx="210" cy="210" r="11" fill="#00e5ff" style="filter:drop-shadow(0 0 18px rgba(0,229,255,1))"/>
-          <text x="210" y="33" text-anchor="middle" style="font:600 12px 'JetBrains Mono',monospace; fill:#565d72">tick · 120s</text>
-        </svg>
-      </div>
-      <div class="states">
-        <div class="state"><span class="g">○</span><code>pending</code><p><span class="en">Waits for its dependencies to be merged and for a parallelism slot.</span><span class="es">Espera a sus dependencias mergeadas y a un hueco de paralelismo.</span></p></div>
-        <div class="state"><span class="g">◔</span><code>dispatched</code><p><span class="en">An agent plans and implements the slice in its own worktree and opens the PR.</span><span class="es">Un agente planifica e implementa la slice en su worktree y abre la PR.</span></p></div>
-        <div class="state"><span class="g">◓</span><code>under_review</code><p><span class="en">The pre-human reviewer reads the diff once and leaves its verdict as a label.</span><span class="es">El revisor pre-humano lee el diff una vez y deja su veredicto en una label.</span></p></div>
-        <div class="state"><span class="g">◐</span><code>pr_open</code><p><span class="en">The PR waits for your review on GitHub web.</span><span class="es">La PR espera tu revisión en GitHub web.</span></p></div>
-        <div class="state warn"><span class="g">◑</span><code>changes_requested</code><p><span class="en">You wrote <code>/grooveloop-implement</code>, or the reviewer&#39;s verdict was blocking: the agent addresses the comments.</span><span class="es">Escribiste <code>/grooveloop-implement</code>, o el veredicto del revisor fue bloqueante: el agente atiende los comentarios.</span></p></div>
-        <div class="state warn"><span class="g">⏸</span><code>blocked</code><p><span class="en">The reviewer found something that needs a human decision. The loop waits.</span><span class="es">El revisor encontró algo que exige una decisión humana. El loop espera.</span></p></div>
-        <div class="state done"><span class="g">●</span><code>merged</code><p><span class="en">Approved. The loop dispatches the next slice in the graph.</span><span class="es">Aprobado. El loop despacha la siguiente slice del grafo.</span></p></div>
-        <div class="state bad"><span class="g">✗</span><code>failed</code><p><span class="en">Terminal, after bounded retries of the recoverable causes. Recovery never deletes work.</span><span class="es">Terminal, tras reintentos acotados de las causas recuperables. La recuperación nunca borra trabajo.</span></p></div>
       </div>
     </div>
   </section>
@@ -473,7 +386,7 @@
 
   <section id="agents">
     <div class="sec-head">
-      <span class="label"><span class="en">Agents & skills</span><span class="es">Agentes y skills</span></span>
+      <span class="label"><span class="en">Agents & capabilities</span><span class="es">Agentes y capacidades</span></span>
       <h2><span class="en">The agents are yours to shape.</span><span class="es">Los agentes se moldean a tu medida.</span></h2>
       <p>
         <span class="en">Every role in the loop — developer, reviewer, verifier, scribe — is an <strong>agent profile in markdown</strong>: readable, versionable, overridable per repo.</span>
@@ -504,32 +417,19 @@
 <span class="t-a">a small PR that closes the sub-issue.</span></pre>
       </figure>
     </div>
-  </section>
-
-  <section id="capabilities">
-    <div class="sec-head">
-      <span class="label"><span class="en">Capabilities</span><span class="es">Capacidades</span></span>
-      <h2><span class="en">Autonomy you can audit.</span><span class="es">Autonomía que puedes auditar.</span></h2>
-    </div>
-    <div class="features">
+    <div class="features caps">
       <div class="feat"><h3><span class="en">Deploy verification</span><span class="es">Verificación del despliegue</span></h3>
         <p><span class="en">With <code>--verify-deploy</code>, the verifier checks after the merge that the deploy does not degrade the service and that the slice does what it promised.</span><span class="es">Con <code>--verify-deploy</code>, el verifier comprueba tras el merge que el despliegue no degrada el servicio y que la slice hace lo que prometía.</span></p></div>
       <div class="feat"><h3><span class="en">Cost in plain sight</span><span class="es">Coste a la vista</span></h3>
         <p><span class="en">Every agent session shows model, tokens, cache %, turns and dollars. <code>grooveloop usage</code> gives the real cost per slice.</span><span class="es">Cada sesión de agente muestra modelo, tokens, % de caché, turnos y dólares. <code>grooveloop usage</code> da el coste real por slice.</span></p></div>
       <div class="feat"><h3><span class="en">State lives in labels</span><span class="es">El estado vive en labels</span></h3>
-        <p><span class="en">GitHub is the source of truth: issues, sub-issues, labels and PRs hold the domain state. Anyone on the team reads it with no extra tooling.</span><span class="es">GitHub es la fuente de verdad: issues, sub-issues, labels y PRs guardan el estado del dominio. Cualquiera del equipo lo lee sin herramientas extra.</span></p></div>
+        <p><span class="en">GitHub is the source of truth: each slice moves <code>pending</code> → <code>dispatched</code> → <code>under_review</code> → <code>pr_open</code> → <code>merged</code>, and issues, sub-issues, labels and PRs hold that state. Anyone on the team reads it with no extra tooling.</span><span class="es">GitHub es la fuente de verdad: cada slice pasa por <code>pending</code> → <code>dispatched</code> → <code>under_review</code> → <code>pr_open</code> → <code>merged</code>, e issues, sub-issues, labels y PRs guardan ese estado. Cualquiera del equipo lo lee sin herramientas extra.</span></p></div>
       <div class="feat"><h3><span class="en">A shared Story journal</span><span class="es">Bitácora de la Story</span></h3>
         <p><span class="en">Agents working one Story share a journal (<code>note</code>, <code>journal</code>). The reviewer and the next slice know what was decided before.</span><span class="es">Los agentes de una Story comparten bitácora (<code>note</code>, <code>journal</code>). El revisor y la siguiente slice saben qué se decidió antes.</span></p></div>
       <div class="feat"><h3><span class="en">No server, no broker</span><span class="es">Sin servidor ni broker</span></h3>
         <p><span class="en">A local CLI. Each tick queries GitHub and detects events. No webhooks, queues or databases to run.</span><span class="es">Un CLI local. Cada tick consulta GitHub y detecta los eventos. Sin webhooks, colas ni bases de datos que mantener.</span></p></div>
       <div class="feat"><h3><span class="en">Preflight before work</span><span class="es">Preflight antes de trabajar</span></h3>
         <p><span class="en"><code>grooveloop doctor</code> probes every adapter: GitHub auth, engines and profiles. If something fails, nothing dispatches.</span><span class="es"><code>grooveloop doctor</code> comprueba cada adaptador: autenticación de GitHub, motores y perfiles. Si algo falla, no se despacha nada.</span></p></div>
-    </div>
-    <div class="facts">
-      <div class="fact"><b>120s</b><span class="en">between ticks against GitHub</span><span class="es">entre ticks contra GitHub</span><code>--tick-interval</code></div>
-      <div class="fact"><b>3</b><span class="en">slices in parallel per Story</span><span class="es">slices en paralelo por Story</span><code>--max-parallel-slices</code></div>
-      <div class="fact"><b>3</b><span class="en">automatic correction rounds</span><span class="es">rondas de corrección automática</span><code>--max-review-rounds</code></div>
-      <div class="fact"><b>2</b><span class="en">retries before a slice fails</span><span class="es">reintentos antes de que una slice falle</span><code>--max-retries</code></div>
     </div>
   </section>
 
@@ -726,11 +626,38 @@
     </div>
   </section>
 
-  <section id="name">
-    <div class="sec-head">
-      <span class="label"><span class="en">Why the name</span><span class="es">Por qué el nombre</span></span>
-      <h2><span class="en">A pulse everyone locks into.</span><span class="es">Un pulso en el que todos encajan.</span></h2>
+  <section id="story">
+    <div class="cycle">
+      <div class="groove-art">
+        <svg viewBox="0 0 420 420" role="img" aria-label="Concentric groove with the pulse at the center">
+          <circle cx="210" cy="210" r="190" fill="none" stroke="#1c1c2c" stroke-width="1.5"/>
+          <circle cx="210" cy="210" r="150" fill="none" stroke="#23233a" stroke-width="1.5"/>
+          <circle cx="210" cy="210" r="110" fill="none" stroke="#2c2c47" stroke-width="1.5"/>
+          <circle cx="210" cy="210" r="70" fill="none" stroke="#b388ff" stroke-width="2" style="filter:drop-shadow(0 0 8px rgba(179,136,255,.8))"/>
+          <circle class="pulse-dot" cx="210" cy="210" r="11" fill="#00e5ff" style="filter:drop-shadow(0 0 18px rgba(0,229,255,1))"/>
+          <text x="210" y="33" text-anchor="middle" style="font:600 12px 'JetBrains Mono',monospace; fill:#565d72">tick · 120s</text>
+        </svg>
+      </div>
+      <div class="sec-head" style="margin-bottom:0">
+        <span class="label"><span class="en">The story</span><span class="es">La historia</span></span>
+        <h2><span class="en">My way of working with agents, turned into a tool.</span><span class="es">Mi forma de trabajar con agentes, convertida en herramienta.</span></h2>
+        <p>
+          <span class="en">It started when I was carrying specs, slices, implementations, reviews and deliveries by hand across several agent sessions at once: steps got forgotten and sessions stalled. I automated that workflow, and I keep refining it with every change it delivers.</span>
+          <span class="es">Empezó cuando llevaba a mano specs, slices, implementaciones, revisiones y entregas por varias sesiones de agente a la vez: se olvidaban pasos y las sesiones se quedaban atascadas. Automaticé ese flujo, y lo sigo refinando con cada cambio que entrega.</span>
+        </p>
+        <p>
+          <span class="en">It is not a loop to hand everything over to the agents. It is <strong>a loop with control and continuous improvement</strong>: you think the spec, your merge is the decision, and every redirection can become a convention the next slice already knows.</span>
+          <span class="es">No es un loop para delegarlo todo en los agentes. Es <strong>un loop con control y mejora continua</strong>: tú piensas la spec, tu merge es la decisión, y cada redirección puede convertirse en una convención que la siguiente slice ya conoce.</span>
+        </p>
+        <div class="uses">
+          <span class="chip glow"><span class="en">in daily use</span><span class="es">en uso diario</span></span>
+          <span class="chip"><span class="en">experiments</span><span class="es">experimentos</span></span>
+          <span class="chip"><span class="en">personal projects</span><span class="es">proyectos personales</span></span>
+          <span class="chip"><span class="en">high-impact production projects</span><span class="es">proyectos con alto impacto en producción</span></span>
+        </div>
+      </div>
     </div>
+    <span class="label sub"><span class="en">Why the name</span><span class="es">Por qué el nombre</span></span>
     <div class="features">
       <div class="feat"><h3>groove</h3>
         <p><span class="en">I am a percussionist. In a musical ensemble, percussion holds the pulse from inside, and everyone locks into it. That steady feel is the groove. The word comes from the groove of a vinyl record, where the needle follows the track without skipping.</span><span class="es">Soy percusionista. En una agrupación musical, la percusión sostiene el pulso desde dentro, y todos encajan en él. Esa sensación estable es el groove. La palabra viene del surco de un disco de vinilo, por donde la aguja avanza sin saltar.</span></p></div>
