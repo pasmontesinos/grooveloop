@@ -271,7 +271,7 @@
       <li><a href="#split"><span class="en">The split</span><span class="es">El reparto</span></a></li>
       <li><a href="#conventions"><span class="en">Conventions</span><span class="es">Convenciones</span></a></li>
       <li><a href="#agents"><span class="en">Agents</span><span class="es">Agentes</span></a></li>
-      <li><a href="#cockpit"><span class="en">The cockpit</span><span class="es">El cockpit</span></a></li>
+      <li><a href="#cockpit"><span class="en">The cockpit</span><span class="es">El panel de control</span></a></li>
       <li><a href="#install"><span class="en">Install</span><span class="es">Instalar</span></a></li>
       <li><a href="#story"><span class="en">The story</span><span class="es">La historia</span></a></li>
     </ul>
@@ -332,7 +332,7 @@
         <p><span class="en">A slice dispatches only when its dependencies are merged, capped by <code>--max-parallel-slices</code>.</span><span class="es">Una slice se despacha solo con sus dependencias mergeadas, con el tope de <code>--max-parallel-slices</code>.</span></p></div>
       <div class="chore"><span class="was"><span class="en">waiting for the agent to finish</span><span class="es">esperar a que el agente acabe</span></span>
         <h3><span class="en">Watches the run</span><span class="es">Vigila la ejecución</span></h3>
-        <p><span class="en">Each agent runs detached in its own worktree. The cockpit flags a silent agent as stalled.</span><span class="es">Cada agente corre detached en su propio worktree. El cockpit marca al agente silencioso como stalled.</span></p></div>
+        <p><span class="en">Each agent runs detached in its own worktree. The cockpit flags a silent agent as stalled.</span><span class="es">Cada agente corre detached en su propio worktree. El panel de control marca al agente silencioso como stalled.</span></p></div>
       <div class="chore"><span class="was"><span class="en">doing the first review pass</span><span class="es">hacer la primera pasada de revisión</span></span>
         <h3><span class="en">Reviews before you</span><span class="es">Revisa antes que tú</span></h3>
         <p><span class="en">A second agent reads the diff once and leaves its verdict as a label. Your PR arrives pre-screened.</span><span class="es">Un segundo agente lee el diff una vez y deja su veredicto en una label. La PR te llega con el filtro hecho.</span></p></div>
@@ -447,8 +447,8 @@
 
   <section id="cockpit">
     <div class="sec-head">
-      <span class="label"><span class="en">The cockpit</span><span class="es">El cockpit</span></span>
-      <h2><span class="en">A TUI cockpit, not a scrolling log.</span><span class="es">Un cockpit TUI, no un log que corre.</span></h2>
+      <span class="label"><span class="en">The cockpit</span><span class="es">El panel de control</span></span>
+      <h2><span class="en">A TUI cockpit, not a scrolling log.</span><span class="es">Un panel de control en la terminal, no un log que corre.</span></h2>
       <p>
         <span class="en"><code>grooveloop watch</code> opens a terminal app over the live loops on your machine. Three views, one question each — where each slice stands and what its PR waits for, what was specified, what was decided along the way. Keyboard-driven, and it never touches GitHub: it only reads the state files each loop publishes. Walk the views below.</span>
         <span class="es"><code>grooveloop watch</code> abre una app de terminal sobre los loops vivos de tu máquina. Tres vistas, una pregunta cada una — dónde está cada slice y qué espera su PR, qué se especificó, qué se decidió por el camino. Se conduce con el teclado y nunca toca GitHub: solo lee los ficheros de estado que publica cada loop. Recorre las vistas abajo.</span>
@@ -632,7 +632,7 @@
 <span class="cmt"><span class="en"># probes GitHub auth, engines and agent profiles</span><span class="es"># comprueba GitHub, motores y perfiles de agente</span></span></pre></div>
         <div class="cmd"><div class="cmd-h">run<button type="button" data-copy="grooveloop loop --repo acme/shop --workdir ~/code/shop">copy</button></div>
           <pre><span class="p">$</span> grooveloop loop --repo acme/shop --workdir ~/code/shop
-<span class="cmt"><span class="en"># in another terminal: the cockpit</span><span class="es"># en otra terminal: el cockpit</span></span>
+<span class="cmt"><span class="en"># in another terminal: the cockpit</span><span class="es"># en otra terminal: el panel de control</span></span>
 <span class="p">$</span> grooveloop watch</pre></div>
       </div>
     </div>
