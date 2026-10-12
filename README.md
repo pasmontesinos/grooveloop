@@ -6,7 +6,7 @@ GitHub holds the state of every Story and slice, and Claude Code is the default 
 
 ## A personal loop
 
-grooveloop is my own way of working with coding agents, turned into a tool. It started when I was carrying specs, slices, implementations, reviews and deliveries by hand across several agent sessions at once: steps got forgotten and sessions stalled. I automated that workflow, and I keep refining it with every change it delivers.
+grooveloop is my own way of working with coding agents, turned into a tool. I used to steer the agent in real time, in the same session where the code was being written. As models got better and the repository conventions sharpened with every correction I wrote down, it made more sense to put the weight on the spec and delegate the implementation, until it ran on autopilot up to the pull request. What was left was coordination: handing over the spec, launching, reviewing, launching the next slice, one repetitive prompt after another. grooveloop was born to replace that coordination. Correction rounds, parallel slices and lessons came later, almost on their own. I keep refining it with every change it delivers.
 
 I use it every day, on experiments, on personal projects and on projects with a high impact in production. That is why it is not a loop to hand everything over to the agents. It is a loop with control:
 
