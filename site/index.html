@@ -244,6 +244,8 @@
   .label.sub { display: block; margin: 48px 0 18px; color: var(--muted); text-shadow: none; }
   .features.caps { margin-top: 64px; }
   .sec-head + .label.sub { margin-top: 0; }
+  .thesis { margin-top: 44px; font: 800 clamp(24px, 3.4vw, 38px)/1.2 var(--display); letter-spacing: -.02em; text-wrap: balance; }
+  .thesis em { font-style: normal; background: linear-gradient(90deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .uses .chip { padding: 5px 11px; border-radius: 999px; }
   .uses { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
   footer a { color: var(--muted); }
@@ -285,8 +287,8 @@
       <div class="eyebrow"><b>● v0.1</b> <span class="en">A personal loop · CLI · agent-driven</span><span class="es">Un loop personal · CLI · conducido por agentes</span></div>
       <h1><span class="en">Your delivery, <em>always flowing</em>.</span><span class="es">Tu delivery, <em>siempre fluyendo</em>.</span></h1>
       <p class="lede">
-        <span class="en">Driving agents through a multi-slice change by hand means forgotten steps and stalled sessions. <strong>grooveloop</strong> keeps the whole cycle moving — specs, slices, reviews and merges locked into one steady pulse. You decide; the loop makes sure nothing stalls.</span>
-        <span class="es">Conducir agentes a mano por un cambio de varias slices significa pasos olvidados y sesiones estancadas. <strong>grooveloop</strong> mantiene el ciclo entero en marcha — specs, slices, revisiones y merges encajados en un solo pulso. Tú decides; el loop no deja que nada se pare.</span>
+        <span class="en">Once the agent can implement on its own, what is left is coordination: hand over the spec, launch the implementation, ask for the review, launch the next slice, one repetitive prompt at a time. <strong>grooveloop</strong> takes over that coordination — specs, slices, reviews and merges locked into one steady pulse. You decide; the loop makes sure nothing stalls.</span>
+        <span class="es">Cuando el agente ya implementa solo, lo que queda es coordinación: pasar la spec, lanzar la implementación, pedir la review, lanzar la siguiente slice, a golpe de prompt repetitivo. <strong>grooveloop</strong> se encarga de esa coordinación — specs, slices, revisiones y merges encajados en un solo pulso. Tú decides; el loop no deja que nada se pare.</span>
       </p>
       <div class="ctas">
         <a class="btn primary" href="#install"><span class="en">Install grooveloop</span><span class="es">Instalar grooveloop</span></a>
@@ -349,6 +351,7 @@
         <p><span class="en">You brainstorm and close it into a Spec: one Issue with its slices, their order and their dependencies.</span><span class="es">Haces el brainstorming y lo cierras en una Spec: una Issue con sus slices, su orden y sus dependencias.</span></p>
         <ul>
           <li><span class="en">The <code>grooveloop:slicing</code> skill helps you cut small, safe slices.</span><span class="es">La skill <code>grooveloop:slicing</code> te ayuda a cortar slices pequeñas y seguras.</span></li>
+          <li><span class="en">Every doubt resolved in the spec is one correction or redirection less once the code is written.</span><span class="es">Cada duda resuelta en la spec es una corrección o una redirección menos cuando el código ya está escrito.</span></li>
           <li><span class="en">You mark the Issue ready; the loop picks it up.</span><span class="es">Marcas la Issue como lista y el loop la recoge.</span></li>
         </ul>
       </div>
@@ -358,11 +361,13 @@
         <p><span class="en">You review each PR on GitHub web, as you already do. If the agent took a path you don't want, you mark another one. Your decision is the only thing that moves the loop forward.</span><span class="es">Revisas cada PR en GitHub web, como ya haces. Si el agente tomó un camino que no quieres, le marcas otro. Tu decisión es lo único que hace avanzar el loop.</span></p>
         <ul>
           <li><span class="en"><code>/grooveloop-implement</code> sends the agent back with your comments.</span><span class="es"><code>/grooveloop-implement</code> devuelve al agente con tus comentarios.</span></li>
+          <li><span class="en">Small increments keep each review manageable, and make each merge safe to take to production.</span><span class="es">Los incrementos pequeños mantienen cada review manejable y permiten llevar cada merge a producción de forma segura.</span></li>
           <li><span class="en"><b>merge</b> approves and <b>close</b> rejects. A rejected slice keeps its branch: the loop never deletes work.</span><span class="es"><b>merge</b> aprueba y <b>close</b> rechaza. Una slice rechazada conserva su rama: el loop nunca borra trabajo.</span></li>
           <li><span class="en"><code>/grooveloop-learn</code> turns a redirection into a repo convention, via a PR you review.</span><span class="es"><code>/grooveloop-learn</code> convierte una redirección en convención del repo, vía una PR que tú revisas.</span></li>
         </ul>
       </div>
     </div>
+    <p class="thesis"><span class="en">You decide. <em>The agent works for you, following your rules.</em></span><span class="es">Tú decides. <em>El agente trabaja para ti, siguiendo tus reglas.</em></span></p>
   </section>
 
   <section id="conventions">
@@ -649,8 +654,8 @@
         <span class="label"><span class="en">The story</span><span class="es">La historia</span></span>
         <h2><span class="en">My way of working with agents, turned into a tool.</span><span class="es">Mi forma de trabajar con agentes, convertida en herramienta.</span></h2>
         <p>
-          <span class="en">It started when I was carrying specs, slices, implementations, reviews and deliveries by hand across several agent sessions at once: steps got forgotten and sessions stalled. I automated that workflow, and I keep refining it with every change it delivers.</span>
-          <span class="es">Empezó cuando llevaba a mano specs, slices, implementaciones, revisiones y entregas por varias sesiones de agente a la vez: se olvidaban pasos y las sesiones se quedaban atascadas. Automaticé ese flujo, y lo sigo refinando con cada cambio que entrega.</span>
+          <span class="en">I used to steer the agent in real time, in the same session where the code was being written. As models got better and the repository conventions sharpened with every correction I wrote down, it made more sense to put the weight on the spec and delegate the implementation, until it ran on autopilot up to the pull request. What was left was coordination: handing over the spec, launching, reviewing, launching the next slice, one repetitive prompt after another. grooveloop was born to replace that coordination. Correction rounds, parallel slices and lessons came later, almost on their own.</span>
+          <span class="es">Antes dirigía al agente en tiempo real, en la misma sesión en la que se escribía el código. A medida que los modelos mejoraban y las convenciones del repositorio se afinaban con cada corrección que dejaba por escrito, tenía más sentido poner el peso en la spec y delegar la implementación, hasta que fue en piloto automático hasta la pull request. Lo que quedaba era coordinación: pasar la spec, lanzar, revisar, lanzar la siguiente slice, a golpe de prompt repetitivo. grooveloop nació para sustituir esa coordinación. Las rondas de corrección, las slices en paralelo y las lecciones llegaron después, casi solas.</span>
         </p>
         <p>
           <span class="en">It is not a loop to hand everything over to the agents. It is <strong>a loop with control and continuous improvement</strong>: you think the spec, your merge is the decision, and every redirection can become a convention the next slice already knows.</span>
