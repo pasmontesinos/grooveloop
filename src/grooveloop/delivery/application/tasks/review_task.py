@@ -65,8 +65,9 @@ class ReviewTask:
             return ""
 
         return (
-            "The developer declined to change code for the changes the human requested: instead of pushing commits, "
-            "they explained why in a comment of the Pull Request that ends with the marker "
+            "The developer declined to change code for the changes requested in the previous round, either by the "
+            "human's `/grooveloop-implement` directives or by the findings of the previous review: instead of pushing "
+            "commits, they explained why in a comment of the Pull Request that ends with the marker "
             "`<!-- grooveloop:no-changes -->`. Read the requested changes and that reply, and judge whether the "
             "reason holds: if it does, the verdict depends only on the code; if it does not, the requested changes "
             "are still findings of this review.\n\n"

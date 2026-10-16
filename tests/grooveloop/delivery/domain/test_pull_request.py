@@ -351,16 +351,39 @@ class TestPullRequestCorrectionWithoutChanges:
 
         assert pull_request.has_a_correction_after_review() is False
 
-    def test_a_no_changes_reply_without_a_taken_directive_is_not_a_correction(self) -> None:
+    def test_a_no_changes_reply_after_the_summary_of_a_blocking_verdict_is_a_correction_without_commits(self) -> None:
         pull_request = PullRequest(
             number=PullRequestNumber(42),
-            comments=[_comment(1, marks=_ADDRESSED, taken_on=2)],
+            comments=[],
             last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
             review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
             no_changes_reply_at=datetime(2026, 6, 6, tzinfo=UTC),
         )
 
+        assert pull_request.has_a_correction_after_review() is True
+        assert pull_request.declines_the_changes() is True
+
+    def test_a_no_changes_reply_before_the_summary_of_a_blocking_verdict_is_not_a_correction(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 4, tzinfo=UTC),
+        )
+
         assert pull_request.has_a_correction_after_review() is False
+
+    def test_still_declines_the_changes_once_its_directives_are_addressed(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(3, marks=_ADDRESSED)],
+            last_commit_at=datetime(2026, 6, 1, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 2, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 4, tzinfo=UTC),
+        )
+
+        assert pull_request.declines_the_changes() is True
 
     def test_a_commit_after_the_review_is_a_correction(self) -> None:
         pull_request = PullRequest(

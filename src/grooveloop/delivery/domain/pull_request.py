@@ -103,7 +103,7 @@ class PullRequest:
 
     def _has_a_no_changes_reply_after_review(self) -> bool:
         last_reviewed_at = self._last_reviewed_at()
-        if not self.taken_directives() or last_reviewed_at is None or self._no_changes_reply_at is None:
+        if last_reviewed_at is None or self._no_changes_reply_at is None:
             return False
 
         return self._no_changes_reply_at > last_reviewed_at

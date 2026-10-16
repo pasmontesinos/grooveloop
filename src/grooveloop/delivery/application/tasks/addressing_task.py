@@ -22,15 +22,6 @@ class AddressingTask:
         )
 
     def resumption(self, a_slice: Slice) -> str:
-        if not a_slice.taken_directives():
-            return (
-                f'Your previous turn ended without pushing commits to the PR of the slice "{a_slice.title}". '
-                "Continue in this same worktree from where you left off: finish the requested changes, reply in each "
-                "review thread and push to the PR branch. Do not run commands in the background or end your turn "
-                "waiting for a task: wait in the foreground for long commands. You work in autonomous mode: do not "
-                "ask questions and finish when you push."
-            )
-
         return (
             f'Your previous turn ended without pushing commits to the PR of the slice "{a_slice.title}" and without '
             "explaining why nothing must change. Continue in this same worktree from where you left off: either "
@@ -43,7 +34,11 @@ class AddressingTask:
 
     def _no_changes_section(self, a_slice: Slice, *, automatic: bool) -> str:
         if automatic:
-            return ""
+            return (
+                "If you conclude, with reason, that no finding of the reviewer must change, do not make a commit just "
+                f"to be able to push: rebut them in {self._no_changes_reply(a_slice)} The reviewer will judge whether "
+                "your rebuttal holds.\n\n"
+            )
 
         return (
             "If you conclude, with reason, that nothing must change, do not make a commit just to be able to push: "

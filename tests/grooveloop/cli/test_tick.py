@@ -184,6 +184,36 @@ def _under_review_slice_with_a_blocking_verdict(*extra_labels: str) -> tuple[Any
     return github, sub_issue
 
 
+def _slice_with_a_rebutted_blocking_verdict(status: str, *conversation: Any) -> tuple[Any, Any]:
+    story_issue = create_autospec(Issue, spec_set=True, instance=True)
+    story_issue.body = ""
+    story_issue.labels = []
+    labels = ("story:7", status, "pr:42", "review:blocking", "review-round:1")
+    sub_issue = _sub_issue(12, *labels)
+    repo = create_autospec(Repository, spec_set=True, instance=True)
+    repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+    wire_slice_graph(
+        repo,
+        slice_node(
+            12,
+            *labels,
+            pull_request=pr_node(
+                42,
+                conversation=[
+                    conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                    conversation_comment("The finding does not apply\n\n<!-- grooveloop:no-changes -->", day=3),
+                    *conversation,
+                ],
+                commit_dates=["2026-06-01T00:00:00Z"],
+            ),
+        ),
+    )
+    github = create_autospec(Github, spec_set=True, instance=True)
+    github.get_repo.return_value = repo
+
+    return github, sub_issue
+
+
 def _corrected_slice_with_a_spent_review_round() -> tuple[Any, Any]:
     story_issue = create_autospec(Issue, spec_set=True, instance=True)
     story_issue.body = ""
@@ -1710,6 +1740,69 @@ class TestTick:
         assert exit_code == 0
         assert agent_runner.dispatched_count == 1
         assert "changes_requested" in sub_issue.set_labels.call_args.args
+
+    def test_should_send_back_to_the_reviewer_a_blocking_verdict_rebutted_with_a_marked_reply(self) -> None:
+        github, sub_issue = _slice_with_a_rebutted_blocking_verdict("changes_requested")
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd", max_review_rounds=2)
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 1
+        assert agent_runner.last_task_type == AgentTaskType.REVIEW_SLICE
+        assert "declined to change code" in agent_runner.last_instruction
+        assert "findings of the previous review" in agent_runner.last_instruction
+        labels_set = sub_issue.set_labels.call_args.args
+        assert "under_review" in labels_set
+        assert "review-round:1" in labels_set
+
+    def test_should_spend_a_round_on_a_new_blocking_verdict_of_a_rebutted_correction(self) -> None:
+        github, sub_issue = _slice_with_a_rebutted_blocking_verdict(
+            "under_review", conversation_comment("The finding still applies\n\n<!-- grooveloop:review -->", day=4)
+        )
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd", max_review_rounds=2)
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 1
+        labels_set = sub_issue.set_labels.call_args.args
+        assert "changes_requested" in labels_set
+        assert "review-round:2" in labels_set
+
+    def test_should_leave_to_the_human_a_new_blocking_verdict_of_a_rebutted_correction_without_rounds_left(
+        self,
+    ) -> None:
+        github, sub_issue = _slice_with_a_rebutted_blocking_verdict(
+            "under_review", conversation_comment("The finding still applies\n\n<!-- grooveloop:review -->", day=4)
+        )
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd", max_review_rounds=1)
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 0
+        labels_set = sub_issue.set_labels.call_args.args
+        assert "pr_open" in labels_set
+        assert "review-round:1" in labels_set
 
     def test_should_sweep_the_workspace_of_a_finished_run(self) -> None:
         repo = create_autospec(Repository, spec_set=True, instance=True)
