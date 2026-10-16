@@ -18,6 +18,7 @@ class PullRequest:
         merged: bool = False,
         closed: bool = False,
         review_summary_at: datetime | None = None,
+        no_changes_reply_at: datetime | None = None,
     ) -> None:
         self._number = number
         self._comments = comments
@@ -25,6 +26,7 @@ class PullRequest:
         self._merged = merged
         self._closed = closed
         self._review_summary_at = review_summary_at
+        self._no_changes_reply_at = no_changes_reply_at
 
     @classmethod
     def anchor(cls, number: PullRequestNumber) -> Self:
@@ -55,10 +57,14 @@ class PullRequest:
         if self._review_summary_at is None:
             return False
 
-        if self._last_commit_at is None:
+        last_change_at = max(
+            (instant for instant in (self._last_commit_at, self._no_changes_reply_at) if instant is not None),
+            default=None,
+        )
+        if last_change_at is None:
             return True
 
-        return self._review_summary_at > self._last_commit_at
+        return self._review_summary_at > last_change_at
 
     def has_unaddressed_comments(self) -> bool:
         return len(self.pending_directives()) > 0
@@ -88,6 +94,19 @@ class PullRequest:
             return False
 
         return self._last_commit_at > last_reviewed_at
+
+    def has_a_correction_after_review(self) -> bool:
+        return self.has_commits_after_review() or self._has_a_no_changes_reply_after_review()
+
+    def declines_the_changes(self) -> bool:
+        return self._has_a_no_changes_reply_after_review() and not self.has_commits_after_review()
+
+    def _has_a_no_changes_reply_after_review(self) -> bool:
+        last_reviewed_at = self._last_reviewed_at()
+        if not self.taken_directives() or last_reviewed_at is None or self._no_changes_reply_at is None:
+            return False
+
+        return self._no_changes_reply_at > last_reviewed_at
 
     def _last_reviewed_at(self) -> datetime | None:
         instants = [directive.reviewed_at() for directive in self._reviewed_directives()]

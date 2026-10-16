@@ -886,6 +886,33 @@ class TestGithubSliceRepositoryPullRequest:
         assert a_slice.pull_request.has_a_fresh_review_summary() is True
         assert a_slice.pull_request.has_commits_after_review() is False
 
+    def test_hydrates_the_no_changes_reply_as_the_last_change_of_the_pull_request(self, repo: Mock) -> None:
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "under_review",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment("Verdict: would request changes\n\n<!-- grooveloop:review -->", day=4),
+                        conversation_comment(
+                            "Nothing to change: the port exists\n\n<!-- grooveloop:no-changes -->", day=5
+                        ),
+                    ],
+                    commit_dates=["2026-06-03T00:00:00Z"],
+                ),
+            ),
+        )
+        adapter = GithubSliceRepository(repo, _cache())
+
+        a_slice = adapter.find(SliceId("12"))
+
+        assert a_slice is not None
+        assert a_slice.pull_request is not None
+        assert a_slice.pull_request.has_a_fresh_review_summary() is False
+
     def test_does_not_hydrate_the_review_summary_without_the_marker(self, repo: Mock) -> None:
         wire_slice_graph(
             repo,

@@ -326,3 +326,92 @@ class TestPullRequestDirectiveMarks:
         )
 
         assert pull_request.has_commits_after_review() is False
+
+
+class TestPullRequestCorrectionWithoutChanges:
+    def test_a_no_changes_reply_after_the_take_of_a_directive_is_a_correction_without_commits(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(1, marks=_TAKEN, taken_on=7)],
+            last_commit_at=datetime(2026, 6, 6, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 8, tzinfo=UTC),
+        )
+
+        assert pull_request.has_a_correction_after_review() is True
+
+    def test_a_no_changes_reply_before_the_take_of_a_directive_is_not_a_correction(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(1, marks=_TAKEN, taken_on=7)],
+            last_commit_at=datetime(2026, 6, 6, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 6, tzinfo=UTC),
+        )
+
+        assert pull_request.has_a_correction_after_review() is False
+
+    def test_a_no_changes_reply_without_a_taken_directive_is_not_a_correction(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(1, marks=_ADDRESSED, taken_on=2)],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 6, tzinfo=UTC),
+        )
+
+        assert pull_request.has_a_correction_after_review() is False
+
+    def test_a_commit_after_the_review_is_a_correction(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(1, marks=_TAKEN, taken_on=7)],
+            last_commit_at=datetime(2026, 6, 8, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+        )
+
+        assert pull_request.has_a_correction_after_review() is True
+
+    def test_declines_the_changes_with_a_no_changes_reply_and_no_commits_after_the_review(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(1, marks=_TAKEN, taken_on=7)],
+            last_commit_at=datetime(2026, 6, 6, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 8, tzinfo=UTC),
+        )
+
+        assert pull_request.declines_the_changes() is True
+
+    def test_does_not_decline_the_changes_when_it_also_has_commits_after_the_review(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(1, marks=_TAKEN, taken_on=7)],
+            last_commit_at=datetime(2026, 6, 9, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 8, tzinfo=UTC),
+        )
+
+        assert pull_request.declines_the_changes() is False
+
+    def test_reports_no_fresh_review_summary_when_the_no_changes_reply_is_newer(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 6, tzinfo=UTC),
+        )
+
+        assert pull_request.has_a_fresh_review_summary() is False
+
+    def test_reports_a_fresh_review_summary_newer_than_the_no_changes_reply(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 7, tzinfo=UTC),
+            no_changes_reply_at=datetime(2026, 6, 6, tzinfo=UTC),
+        )
+
+        assert pull_request.has_a_fresh_review_summary() is True

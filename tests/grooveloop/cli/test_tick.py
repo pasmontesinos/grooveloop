@@ -1520,6 +1520,146 @@ class TestTick:
         assert "changes_requested" in sub_issue.set_labels.call_args.args
         assert reactions_added(repo) == [("conversation-1", "EYES")]
 
+    def test_should_send_back_to_the_reviewer_a_correction_that_declines_the_changes_with_a_marked_reply(
+        self,
+    ) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        sub_issue = _sub_issue(12, "story:7", "changes_requested", "pr:42")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "story:7",
+                "changes_requested",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                        conversation_comment(
+                            "/grooveloop-implement: use the SliceRepository port",
+                            day=3,
+                            reactions=[reaction_group("EYES", reacted_at="2026-06-03T00:00:00Z")],
+                        ),
+                        conversation_comment("The port is already used\n\n<!-- grooveloop:no-changes -->", day=4),
+                    ],
+                    commit_dates=["2026-06-01T00:00:00Z"],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.last_task_type == AgentTaskType.REVIEW_SLICE
+        assert "declined to change code" in agent_runner.last_instruction
+        assert "under_review" in sub_issue.set_labels.call_args.args
+        assert reactions_added(repo) == [("conversation-3", "ROCKET")]
+
+    def test_should_keep_under_review_a_declined_correction_until_its_new_summary_appears(self) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        sub_issue = _sub_issue(12, "story:7", "under_review", "pr:42")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "story:7",
+                "under_review",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                        conversation_comment(
+                            "/grooveloop-implement: use the SliceRepository port",
+                            day=3,
+                            reactions=[reaction_group("EYES"), reaction_group("ROCKET")],
+                        ),
+                        conversation_comment("The port is already used\n\n<!-- grooveloop:no-changes -->", day=4),
+                    ],
+                    commit_dates=["2026-06-01T00:00:00Z"],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 0
+        sub_issue.set_labels.assert_not_called()
+
+    def test_should_open_for_the_human_an_approved_declined_correction_without_another_correction(self) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        node = slice_node(
+            12,
+            "story:7",
+            "under_review",
+            "pr:42",
+            "review:approve",
+            pull_request=pr_node(
+                42,
+                conversation=[
+                    conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                    conversation_comment(
+                        "/grooveloop-implement: use the SliceRepository port",
+                        day=3,
+                        reactions=[reaction_group("EYES"), reaction_group("ROCKET")],
+                    ),
+                    conversation_comment("The port is already used\n\n<!-- grooveloop:no-changes -->", day=4),
+                    conversation_comment("The reason holds\n\n<!-- grooveloop:review -->", day=5),
+                ],
+                commit_dates=["2026-06-01T00:00:00Z"],
+            ),
+        )
+        sub_issue = _mutable_sub_issue(12, node, "story:7", "under_review", "pr:42", "review:approve")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(repo, node)
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 0
+        assert "pr_open" in sub_issue.set_labels.call_args.args
+        assert reactions_added(repo) == []
+
     def test_should_sweep_the_workspace_of_a_finished_run(self) -> None:
         repo = create_autospec(Repository, spec_set=True, instance=True)
         wire_slice_graph(repo)

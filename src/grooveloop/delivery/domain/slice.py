@@ -231,11 +231,14 @@ class Slice:
     def taken_directives(self) -> list[ReviewComment]:
         return self._pull_request.taken_directives() if self._pull_request is not None else []
 
-    def has_commits_after_review(self) -> bool:
-        return self._pull_request is not None and self._pull_request.has_commits_after_review()
+    def has_correction_after_review(self) -> bool:
+        return self._pull_request is not None and self._pull_request.has_a_correction_after_review()
 
-    def lacks_commits_after_review(self) -> bool:
-        return self._pull_request is not None and not self._pull_request.has_commits_after_review()
+    def lacks_correction_after_review(self) -> bool:
+        return self._pull_request is not None and not self._pull_request.has_a_correction_after_review()
+
+    def declines_the_changes(self) -> bool:
+        return self._pull_request is not None and self._pull_request.declines_the_changes()
 
     def is_auto_mergeable(self) -> bool:
         if self._status is not SliceStatus.PR_OPEN:
@@ -251,7 +254,7 @@ class Slice:
             return self._review_verdict is ReviewVerdict.EMPTY and not self._has_a_fresh_review_summary()
 
         if self.is_addressing_changes():
-            return self.lacks_commits_after_review()
+            return self.lacks_correction_after_review()
 
         return False
 
@@ -263,7 +266,7 @@ class Slice:
             return self._review_verdict is ReviewVerdict.EMPTY
 
         if self.is_addressing_changes():
-            return self.lacks_commits_after_review()
+            return self.lacks_correction_after_review()
 
         return False
 
