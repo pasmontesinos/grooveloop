@@ -61,7 +61,11 @@ class PullRequest:
         return self._review_summary_at > self._last_commit_at
 
     def has_unaddressed_comments(self) -> bool:
-        return bool(self._comments_requesting_implementation()) and not self.has_commits_after_review()
+        last_directive_at = self._last_directive_at()
+        if last_directive_at is None:
+            return False
+
+        return self._last_commit_at is None or self._last_commit_at <= last_directive_at
 
     def has_commits_after_review(self) -> bool:
         last_reviewed_at = self._last_reviewed_at()
@@ -76,6 +80,9 @@ class PullRequest:
             instants.append(self._review_summary_at)
 
         return max(instants, default=None)
+
+    def _last_directive_at(self) -> datetime | None:
+        return max((comment.created_at for comment in self._comments_requesting_implementation()), default=None)
 
     def _comments_requesting_implementation(self) -> list[ReviewComment]:
         return [comment for comment in self._comments if comment.requests_implementation()]
