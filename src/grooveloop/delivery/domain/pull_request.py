@@ -90,7 +90,7 @@ class PullRequest:
         return self._last_commit_at > last_reviewed_at
 
     def _last_reviewed_at(self) -> datetime | None:
-        instants = [directive.created_at for directive in self._reviewed_directives()]
+        instants = [directive.reviewed_at() for directive in self._reviewed_directives()]
         if self._review_summary_at is not None:
             instants.append(self._review_summary_at)
 

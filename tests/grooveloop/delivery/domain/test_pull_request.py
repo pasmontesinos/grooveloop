@@ -13,6 +13,7 @@ def _comment(
     day: int,
     directives: frozenset[CommentDirective] = frozenset({CommentDirective.IMPLEMENT}),
     marks: frozenset[DirectiveMark] = frozenset(),
+    taken_on: int | None = None,
 ) -> ReviewComment:
     return ReviewComment(
         body="use the SliceRepository port",
@@ -23,6 +24,7 @@ def _comment(
         directives=directives,
         id=f"comment-{day}",
         marks=marks,
+        taken_at=datetime(2026, 6, taken_on, tzinfo=UTC) if taken_on is not None else None,
     )
 
 
@@ -289,6 +291,38 @@ class TestPullRequestDirectiveMarks:
             number=PullRequestNumber(42),
             comments=[_comment(2, marks=_ADDRESSED), _comment(4, marks=_TAKEN)],
             last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+        )
+
+        assert pull_request.has_commits_after_review() is False
+
+    def test_a_directive_taken_after_the_last_commit_holds_the_re_review_although_it_is_older_than_the_summary(
+        self,
+    ) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(1, marks=_TAKEN, taken_on=7)],
+            last_commit_at=datetime(2026, 6, 6, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+        )
+
+        assert pull_request.has_commits_after_review() is False
+
+    def test_a_commit_after_the_take_of_a_directive_requires_the_re_review(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(1, marks=_TAKEN, taken_on=7)],
+            last_commit_at=datetime(2026, 6, 8, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
+        )
+
+        assert pull_request.has_commits_after_review() is True
+
+    def test_a_human_commit_before_the_take_of_a_pending_directive_does_not_require_the_re_review(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2, marks=_ADDRESSED, taken_on=3), _comment(4, marks=_TAKEN, taken_on=7)],
+            last_commit_at=datetime(2026, 6, 6, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 5, tzinfo=UTC),
         )
 
         assert pull_request.has_commits_after_review() is False

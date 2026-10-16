@@ -650,6 +650,51 @@ class TestGithubSliceRepositoryPullRequest:
         assert conversation.id == "IC_1"
         assert conversation.marks == {DirectiveMark.TAKEN}
 
+    def test_find_reads_when_the_viewer_took_each_directive_still_without_the_addressed_mark(self, repo: Mock) -> None:
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "changes_requested",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-implement: rename the variable",
+                            day=3,
+                            node_id="IC_1",
+                            reactions=[
+                                reaction_group(
+                                    "EYES",
+                                    reacted_at="2026-06-05T00:00:00Z",
+                                    others_reacted_at=["2026-06-07T00:00:00Z"],
+                                )
+                            ],
+                        ),
+                        conversation_comment(
+                            "/grooveloop-implement: and test it",
+                            day=4,
+                            node_id="IC_2",
+                            reactions=[
+                                reaction_group("EYES", reacted_at="2026-06-06T00:00:00Z"),
+                                reaction_group("ROCKET"),
+                            ],
+                        ),
+                    ],
+                ),
+            ),
+        )
+        adapter = GithubSliceRepository(repo, _cache())
+
+        a_slice = adapter.find(SliceId("12"))
+
+        assert a_slice is not None
+        assert a_slice.pull_request is not None
+        taken, addressed = a_slice.pull_request.comments
+        assert taken.taken_at == datetime(2026, 6, 5, tzinfo=UTC)
+        assert addressed.taken_at is None
+
     def test_find_reads_conversation_comments_as_context_with_their_directive(self, repo: Mock) -> None:
         wire_slice_graph(
             repo,

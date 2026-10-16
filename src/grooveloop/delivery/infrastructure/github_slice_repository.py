@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from grooveloop.delivery.domain.pull_request import PullRequest
@@ -11,7 +12,7 @@ from grooveloop.delivery.domain.slice_id import SliceId
 from grooveloop.delivery.domain.slice_repository import SliceRepository
 from grooveloop.delivery.domain.slice_status import SliceStatus
 from grooveloop.delivery.domain.story_id import StoryId
-from grooveloop.delivery.infrastructure.github_directive_reactions import marks_of
+from grooveloop.delivery.infrastructure.github_directive_reactions import TAKEN_AT_QUERY, marks_of, taken_at_of
 from grooveloop.delivery.infrastructure.github_review_round_labels import (
     REVIEW_ROUND_LABEL_PREFIX,
     review_rounds_of,
@@ -51,6 +52,7 @@ _STATUS_VALUES = {status.value for status in SliceStatus}
 _REVIEW_SUMMARY_MARKER = "<!-- grooveloop:review -->"
 _TTL_SECONDS = 300
 _ISSUE_KEY_PREFIX = "issues:slice-graph:issue:"
+_TAKEN_AT_KEY_PREFIX = "reactions:taken-at:"
 
 _ISSUE_QUERY = (
     "query($owner: String!, $name: String!, $number: Int!) {"
@@ -203,7 +205,19 @@ class GithubSliceRepository(SliceRepository):
         inline = [self._inline_comment(comment) for comment in pull.review]
         conversation = [self._conversation_comment(comment) for comment in pull.conversation]
 
-        return inline + conversation
+        return [self._with_taken_at(comment) for comment in inline + conversation]
+
+    def _with_taken_at(self, comment: ReviewComment) -> ReviewComment:
+        if comment.id is None or not comment.requests_implementation() or not comment.is_taken():
+            return comment
+
+        return replace(comment, taken_at=self._taken_at(comment.id))
+
+    def _taken_at(self, comment_id: str) -> datetime | None:
+        def load() -> datetime | None:
+            return taken_at_of(self._graphql.query(TAKEN_AT_QUERY, {"id": comment_id}))
+
+        return self._cache.get_or_load(f"{_TAKEN_AT_KEY_PREFIX}{comment_id}", load, _TTL_SECONDS)
 
     def _inline_comment(self, comment: CommentNode) -> ReviewComment:
         root_id = comment.reply_to_id if comment.reply_to_id is not None else comment.database_id

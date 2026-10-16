@@ -20,6 +20,7 @@ class ReviewComment:
     directives: frozenset[CommentDirective] = frozenset()
     id: str | None = None
     marks: frozenset[DirectiveMark] = frozenset()
+    taken_at: datetime | None = None
 
     def requests_implementation(self) -> bool:
         return CommentDirective.IMPLEMENT in self.directives
@@ -32,6 +33,9 @@ class ReviewComment:
 
     def is_addressed(self) -> bool:
         return DirectiveMark.ADDRESSED in self.marks
+
+    def reviewed_at(self) -> datetime:
+        return self.taken_at if self.taken_at is not None else self.created_at
 
     def only_requests_learning(self) -> bool:
         return self.directives == frozenset({CommentDirective.LEARN})

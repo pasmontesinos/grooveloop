@@ -15,6 +15,7 @@ _PULL_REQUEST_MARKER = "pullRequest(number: $number)"
 _LABELED_PULLS_MARKER = "pullRequests("
 _STORY_PULLS_MARKER = "$labels"
 _ADD_REACTION_MARKER = "addReaction"
+_REACTIONS_MARKER = "... on Reactable"
 
 
 def slice_node(
@@ -137,8 +138,17 @@ def conversation_comment(
     }
 
 
-def reaction_group(content: str, *, viewer_has_reacted: bool = True) -> dict[str, Any]:
-    return {"content": content, "viewerHasReacted": viewer_has_reacted}
+def reaction_group(
+    content: str,
+    *,
+    viewer_has_reacted: bool = True,
+    reacted_at: str | None = None,
+    others_reacted_at: list[str] | None = None,
+) -> dict[str, Any]:
+    viewer = [{"createdAt": reacted_at, "user": {"isViewer": True}}] if reacted_at is not None else []
+    others = [{"createdAt": at, "user": {"isViewer": False}} for at in others_reacted_at or []]
+
+    return {"content": content, "viewerHasReacted": viewer_has_reacted, "reactions": [*viewer, *others]}
 
 
 def _author(login: str | None) -> dict[str, Any] | None:
@@ -203,7 +213,7 @@ def wire_story_graph(
 
         return {}, {"data": {"repository": {"issue": _node_of(universe, variables["number"])}}}
 
-    repo.requester.graphql_query.side_effect = _answering_reactions(respond)
+    repo.requester.graphql_query.side_effect = _answering_reactions(respond, [*universe, *pulls])
 
 
 def wire_slice_graph(
@@ -217,14 +227,35 @@ def wire_slice_graph(
 
 def _answering_reactions(
     respond: Callable[[str, dict[str, Any]], tuple[dict[str, Any], dict[str, Any]]],
+    nodes: list[dict[str, Any]],
 ) -> Callable[[str, dict[str, Any]], tuple[dict[str, Any], dict[str, Any]]]:
     def answer(document: str, variables: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         if _ADD_REACTION_MARKER in document:
             return {}, {"data": {"addReaction": {"reaction": {"content": variables["content"]}}}}
 
+        if _REACTIONS_MARKER in document:
+            return {}, {"data": {"node": {"reactions": {"nodes": _eyes_of(nodes, variables["id"])}}}}
+
         return respond(document, variables)
 
     return answer
+
+
+def _eyes_of(nodes: list[dict[str, Any]], comment_id: str) -> list[dict[str, Any]]:
+    comment = next(comment for comment in _comments_of(nodes) if comment["id"] == comment_id)
+
+    return [
+        reaction for group in comment["reactionGroups"] if group["content"] == "EYES" for reaction in group["reactions"]
+    ]
+
+
+def _comments_of(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    pulls = [pull for node in nodes for pull in node.get("closedByPullRequestsReferences", {"nodes": [node]})["nodes"]]
+    conversation = [comment for pull in pulls for comment in pull.get("comments", {"nodes": []})["nodes"]]
+    threads = [thread for pull in pulls for thread in pull.get("reviewThreads", {"nodes": []})["nodes"]]
+    inline = [comment for thread in threads for comment in thread["comments"]["nodes"]]
+
+    return conversation + inline
 
 
 def reactions_added(repo: Any) -> list[tuple[str, str]]:

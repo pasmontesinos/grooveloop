@@ -125,7 +125,7 @@ Write a directive **at the start of a line** in a pull request comment, in the c
 
 A directive quoted (`>`) or mentioned in the middle of a sentence does not count.
 
-The loop marks the `/grooveloop-implement` directives it consumes with reactions on their comment: 👀 when a correction takes them and 🚀 when that correction ends with commits. A directive without 🚀 is still pending, so a directive written while a correction is running goes into the next round, and removing the 🚀 of a directive re-opens it. The loop reacts with your own account, so do not add 👀 or 🚀 to your directives yourself. A pull request on which the loop has not marked any directive yet keeps the previous rule: a directive is pending while no commit is newer than it.
+The loop marks the `/grooveloop-implement` directives it consumes with reactions on their comment: 👀 when a correction takes them and 🚀 when that correction ends with commits. A directive without 🚀 is still pending, so a directive written while a correction is running goes into the next round, and removing the 🚀 of a directive re-opens it. The loop reacts with the account of its `gh` token; if that is your own account, do not add 👀 or 🚀 to your directives yourself. A pull request on which the loop has not marked any directive yet keeps the previous rule: a directive is pending while no commit is newer than it.
 
 To pause a Story, relabel its `pending` slices as `blocked`. To resume, relabel those slices back as `pending`. Do not touch a `blocked` slice that has a `review:blocked` verdict or a `pr:N` label: it waits for your decision on an open pull request, and you resolve it with a merge, a close or `/grooveloop-implement`. To retry a `failed` slice, relabel it as `pending`.
 
