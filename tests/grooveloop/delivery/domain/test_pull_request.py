@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from grooveloop.delivery.domain.directive_mark import DirectiveMark
 from grooveloop.delivery.domain.pull_request import PullRequest
 from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
 from grooveloop.delivery.domain.review_comment import ReviewComment
@@ -9,7 +10,9 @@ from grooveloop.shared.domain.comment_directive import CommentDirective
 
 
 def _comment(
-    day: int, directives: frozenset[CommentDirective] = frozenset({CommentDirective.IMPLEMENT})
+    day: int,
+    directives: frozenset[CommentDirective] = frozenset({CommentDirective.IMPLEMENT}),
+    marks: frozenset[DirectiveMark] = frozenset(),
 ) -> ReviewComment:
     return ReviewComment(
         body="use the SliceRepository port",
@@ -18,7 +21,13 @@ def _comment(
         thread_id="555",
         created_at=datetime(2026, 6, day, tzinfo=UTC),
         directives=directives,
+        id=f"comment-{day}",
+        marks=marks,
     )
+
+
+_TAKEN = frozenset({DirectiveMark.TAKEN})
+_ADDRESSED = frozenset({DirectiveMark.TAKEN, DirectiveMark.ADDRESSED})
 
 
 class TestPullRequest:
@@ -193,6 +202,93 @@ class TestPullRequest:
             comments=[_comment(4)],
             last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
             review_summary_at=datetime(2026, 6, 2, tzinfo=UTC),
+        )
+
+        assert pull_request.has_commits_after_review() is False
+
+
+class TestPullRequestDirectiveMarks:
+    def test_a_directive_with_the_addressed_mark_is_not_pending_even_if_newer_than_the_last_commit(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(3, marks=_ADDRESSED)],
+            last_commit_at=datetime(2026, 6, 2, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 1, tzinfo=UTC),
+        )
+
+        assert pull_request.pending_directives() == []
+        assert pull_request.has_unaddressed_comments() is False
+
+    def test_a_taken_directive_without_the_addressed_mark_is_pending_even_with_a_later_commit(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2, marks=_TAKEN)],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+        )
+
+        assert pull_request.pending_directives() == [_comment(2, marks=_TAKEN)]
+        assert pull_request.has_unaddressed_comments() is True
+
+    def test_an_unmarked_directive_on_a_marked_pull_request_is_pending_even_if_older_than_the_last_commit(
+        self,
+    ) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2, marks=_ADDRESSED), _comment(3)],
+            last_commit_at=datetime(2026, 6, 4, tzinfo=UTC),
+        )
+
+        assert pull_request.pending_directives() == [_comment(3)]
+
+    def test_without_marks_the_pending_directives_are_the_ones_not_older_than_the_last_commit(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2), _comment(4), _comment(5, directives=frozenset())],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+        )
+
+        assert pull_request.pending_directives() == [_comment(4)]
+
+    def test_without_marks_the_directives_older_than_the_last_commit_are_addressed_without_a_mark(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2), _comment(4)],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+        )
+
+        assert pull_request.addressed_directives_without_mark() == [_comment(2)]
+
+    def test_with_marks_no_directive_is_addressed_without_a_mark(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2, marks=_ADDRESSED), _comment(3)],
+            last_commit_at=datetime(2026, 6, 4, tzinfo=UTC),
+        )
+
+        assert pull_request.addressed_directives_without_mark() == []
+
+    def test_the_taken_directives_are_the_ones_with_the_taken_mark_and_without_the_addressed_one(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2, marks=_ADDRESSED), _comment(3, marks=_TAKEN), _comment(4)],
+        )
+
+        assert pull_request.taken_directives() == [_comment(3, marks=_TAKEN)]
+
+    def test_the_review_baseline_of_a_marked_pull_request_ignores_the_directives_without_a_mark(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2, marks=_TAKEN), _comment(4)],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+        )
+
+        assert pull_request.has_commits_after_review() is True
+
+    def test_the_review_baseline_of_a_marked_pull_request_takes_the_latest_marked_directive(self) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2, marks=_ADDRESSED), _comment(4, marks=_TAKEN)],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
         )
 
         assert pull_request.has_commits_after_review() is False

@@ -11,6 +11,7 @@ from grooveloop.delivery.domain.slice_id import SliceId
 from grooveloop.delivery.domain.slice_repository import SliceRepository
 from grooveloop.delivery.domain.slice_status import SliceStatus
 from grooveloop.delivery.domain.story_id import StoryId
+from grooveloop.delivery.infrastructure.github_directive_reactions import marks_of
 from grooveloop.delivery.infrastructure.github_review_round_labels import (
     REVIEW_ROUND_LABEL_PREFIX,
     review_rounds_of,
@@ -214,11 +215,17 @@ class GithubSliceRepository(SliceRepository):
             line=comment.line,
             thread_id=str(root_id),
             directives=parse_comment_directives(comment.body),
+            id=comment.node_id,
+            marks=marks_of(comment.viewer_reactions),
         )
 
     def _conversation_comment(self, comment: CommentNode) -> ReviewComment:
         return ReviewComment(
-            body=comment.body, created_at=comment.created_at, directives=parse_comment_directives(comment.body)
+            body=comment.body,
+            created_at=comment.created_at,
+            directives=parse_comment_directives(comment.body),
+            id=comment.node_id,
+            marks=marks_of(comment.viewer_reactions),
         )
 
     def _status_from(self, node: IssueNode) -> SliceStatus:

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _THREAD_COMMENTS_MARKER = "PullRequestReviewThread"
 _PULL_THREADS_MARKER = "reviewThreads(first: $page"
@@ -11,6 +14,7 @@ _ISSUES_MARKER = "issues("
 _PULL_REQUEST_MARKER = "pullRequest(number: $number)"
 _LABELED_PULLS_MARKER = "pullRequests("
 _STORY_PULLS_MARKER = "$labels"
+_ADD_REACTION_MARKER = "addReaction"
 
 
 def slice_node(
@@ -100,8 +104,12 @@ def inline_comment(
     reply_to: int | None = None,
     diff_hunk: str = "@@ @@",
     author: str | None = "octocat",
+    node_id: str | None = None,
+    reactions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
+        "id": node_id if node_id is not None else f"inline-{database_id}",
+        "reactionGroups": reactions or [],
         "databaseId": database_id,
         "author": _author(author),
         "body": body,
@@ -113,8 +121,24 @@ def inline_comment(
     }
 
 
-def conversation_comment(body: str, day: int = 2, author: str | None = "octocat") -> dict[str, Any]:
-    return {"body": body, "author": _author(author), "createdAt": f"2026-06-0{day}T00:00:00Z"}
+def conversation_comment(
+    body: str,
+    day: int = 2,
+    author: str | None = "octocat",
+    node_id: str | None = None,
+    reactions: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return {
+        "id": node_id if node_id is not None else f"conversation-{day}",
+        "reactionGroups": reactions or [],
+        "body": body,
+        "author": _author(author),
+        "createdAt": f"2026-06-0{day}T00:00:00Z",
+    }
+
+
+def reaction_group(content: str, *, viewer_has_reacted: bool = True) -> dict[str, Any]:
+    return {"content": content, "viewerHasReacted": viewer_has_reacted}
 
 
 def _author(login: str | None) -> dict[str, Any] | None:
@@ -179,7 +203,7 @@ def wire_story_graph(
 
         return {}, {"data": {"repository": {"issue": _node_of(universe, variables["number"])}}}
 
-    repo.requester.graphql_query.side_effect = respond
+    repo.requester.graphql_query.side_effect = _answering_reactions(respond)
 
 
 def wire_slice_graph(
@@ -189,6 +213,26 @@ def wire_slice_graph(
     full_name: str = "acme/sample",
 ) -> None:
     wire_story_graph(repo, *nodes, pull_requests=pull_requests, full_name=full_name)
+
+
+def _answering_reactions(
+    respond: Callable[[str, dict[str, Any]], tuple[dict[str, Any], dict[str, Any]]],
+) -> Callable[[str, dict[str, Any]], tuple[dict[str, Any], dict[str, Any]]]:
+    def answer(document: str, variables: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        if _ADD_REACTION_MARKER in document:
+            return {}, {"data": {"addReaction": {"reaction": {"content": variables["content"]}}}}
+
+        return respond(document, variables)
+
+    return answer
+
+
+def reactions_added(repo: Any) -> list[tuple[str, str]]:
+    calls = repo.requester.graphql_query.call_args_list
+
+    return [
+        (call.args[1]["subject"], call.args[1]["content"]) for call in calls if _ADD_REACTION_MARKER in call.args[0]
+    ]
 
 
 def story_pages(repo: Any) -> list[int]:

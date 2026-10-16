@@ -61,11 +61,26 @@ class PullRequest:
         return self._review_summary_at > self._last_commit_at
 
     def has_unaddressed_comments(self) -> bool:
-        last_directive_at = self._last_directive_at()
-        if last_directive_at is None:
-            return False
+        return len(self.pending_directives()) > 0
 
-        return self._last_commit_at is None or self._last_commit_at <= last_directive_at
+    def pending_directives(self) -> list[ReviewComment]:
+        directives = self._comments_requesting_implementation()
+        if self._is_marked():
+            return [directive for directive in directives if not directive.is_addressed()]
+
+        return [directive for directive in directives if self._is_newer_than_the_last_commit(directive)]
+
+    def addressed_directives_without_mark(self) -> list[ReviewComment]:
+        pending = self.pending_directives()
+
+        return [
+            directive
+            for directive in self._comments_requesting_implementation()
+            if directive not in pending and not directive.is_addressed()
+        ]
+
+    def taken_directives(self) -> list[ReviewComment]:
+        return [directive for directive in self._comments_requesting_implementation() if directive.is_taken()]
 
     def has_commits_after_review(self) -> bool:
         last_reviewed_at = self._last_reviewed_at()
@@ -75,14 +90,24 @@ class PullRequest:
         return self._last_commit_at > last_reviewed_at
 
     def _last_reviewed_at(self) -> datetime | None:
-        instants = [comment.created_at for comment in self._comments_requesting_implementation()]
+        instants = [directive.created_at for directive in self._reviewed_directives()]
         if self._review_summary_at is not None:
             instants.append(self._review_summary_at)
 
         return max(instants, default=None)
 
-    def _last_directive_at(self) -> datetime | None:
-        return max((comment.created_at for comment in self._comments_requesting_implementation()), default=None)
+    def _reviewed_directives(self) -> list[ReviewComment]:
+        directives = self._comments_requesting_implementation()
+        if self._is_marked():
+            return [directive for directive in directives if directive.is_marked()]
+
+        return directives
+
+    def _is_newer_than_the_last_commit(self, directive: ReviewComment) -> bool:
+        return self._last_commit_at is None or directive.created_at >= self._last_commit_at
+
+    def _is_marked(self) -> bool:
+        return any(directive.is_marked() for directive in self._comments_requesting_implementation())
 
     def _comments_requesting_implementation(self) -> list[ReviewComment]:
         return [comment for comment in self._comments if comment.requests_implementation()]

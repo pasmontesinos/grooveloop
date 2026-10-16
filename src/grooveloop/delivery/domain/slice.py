@@ -10,6 +10,7 @@ from grooveloop.shared.domain.agent_run_cause import AgentRunCause
 
 if TYPE_CHECKING:
     from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
+    from grooveloop.delivery.domain.review_comment import ReviewComment
     from grooveloop.delivery.domain.slice_id import SliceId
     from grooveloop.delivery.domain.story_id import StoryId
     from grooveloop.shared.domain.agent_run import AgentRun
@@ -220,6 +221,15 @@ class Slice:
             return False
 
         return self._pull_request.has_unaddressed_comments()
+
+    def pending_directives(self) -> list[ReviewComment]:
+        return self._pull_request.pending_directives() if self._pull_request is not None else []
+
+    def addressed_directives_without_mark(self) -> list[ReviewComment]:
+        return self._pull_request.addressed_directives_without_mark() if self._pull_request is not None else []
+
+    def taken_directives(self) -> list[ReviewComment]:
+        return self._pull_request.taken_directives() if self._pull_request is not None else []
 
     def has_commits_after_review(self) -> bool:
         return self._pull_request is not None and self._pull_request.has_commits_after_review()

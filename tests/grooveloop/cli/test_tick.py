@@ -52,6 +52,8 @@ from tests.playground.shared.infrastructure.github_slice_graph import (
     graph_reads,
     inline_comment,
     pr_node,
+    reaction_group,
+    reactions_added,
     slice_node,
     wire_slice_graph,
 )
@@ -400,6 +402,7 @@ class TestTick:
         assert agent_runner.last_workdir == "/tmp/wd"
         labels_set = sub_issue.set_labels.call_args.args
         assert "changes_requested" in labels_set
+        assert reactions_added(repo) == [("inline-555", "EYES")]
 
     def test_should_fail_a_changes_requested_slice_when_the_agent_finished_without_pushing(self) -> None:
         story_issue = create_autospec(Issue, spec_set=True, instance=True)
@@ -1369,6 +1372,53 @@ class TestTick:
         assert agent_runner.last_task_type == AgentTaskType.REVIEW_SLICE
         labels_set = sub_issue.set_labels.call_args.args
         assert "under_review" in labels_set
+
+    def test_should_mark_as_addressed_only_the_taken_directive_when_the_correction_goes_back_to_the_reviewer(
+        self,
+    ) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        sub_issue = _sub_issue(12, "story:7", "changes_requested", "pr:42")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "story:7",
+                "changes_requested",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-implement: use the SliceRepository port",
+                            day=2,
+                            reactions=[reaction_group("EYES")],
+                        ),
+                        conversation_comment("/grooveloop-implement: and rename it", day=4),
+                    ],
+                    commit_dates=["2026-06-03T00:00:00Z"],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.last_task_type == AgentTaskType.REVIEW_SLICE
+        assert "under_review" in sub_issue.set_labels.call_args.args
+        assert reactions_added(repo) == [("conversation-2", "ROCKET")]
 
     def test_should_sweep_the_workspace_of_a_finished_run(self) -> None:
         repo = create_autospec(Repository, spec_set=True, instance=True)
