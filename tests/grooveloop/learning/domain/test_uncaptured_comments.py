@@ -46,7 +46,13 @@ class TestUncapturedComments:
         pending = _learn_comment("c", 13)
 
         result = uncaptured_comments(
-            [_learn_comment("a", 9), _learn_comment("b", 12, captured=True), pending], [second, first]
+            [_learn_comment("a", 9, captured=True), _learn_comment("b", 12, captured=True), pending], [second, first]
         )
 
         assert result == [pending]
+
+    def test_an_unmarked_learn_comment_written_before_the_lesson_of_a_marked_pull_request_is_uncaptured(self) -> None:
+        lesson = LessonMother.create(status=LessonStatus.LEARNED, captured_at=_FIRST_CAPTURE)
+        missed = _learn_comment("b", 9)
+
+        assert uncaptured_comments([_learn_comment("a", 8, captured=True), missed], [lesson]) == [missed]

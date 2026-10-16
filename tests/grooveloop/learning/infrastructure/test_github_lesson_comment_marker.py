@@ -92,3 +92,12 @@ class TestGithubLessonCommentMarker:
         GithubLessonCommentMarker(repo, cache).mark_captured([_learn_comment("RC_1"), _learn_comment("IC_1")])
 
         assert [comment.captured for comment in signal.comments_of(SourcePullRequest(42))] == [True, True]
+
+    def test_keeps_the_cached_reads_the_reactions_do_not_change(self, repo: Mock) -> None:
+        _wire_merged_pull_with_learn_comments(repo)
+        cache = _cache()
+        cache.get_or_load("pull:42", lambda: "cached", 60)
+
+        GithubLessonCommentMarker(repo, cache).mark_captured([_learn_comment("RC_1")])
+
+        assert cache.get_or_load("pull:42", lambda: "reloaded", 60) == "cached"

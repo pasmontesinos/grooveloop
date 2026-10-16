@@ -84,7 +84,9 @@ class TestLessonCapturedDetector:
         lesson = LessonMother.create(source_pull_request=42, status=LessonStatus.DISCARDED, captured_at=_CAPTURE)
         later = _learn_comment("c", 12)
         detector = LessonCapturedDetector(
-            learn_signal=FakeLearnSignal({42: [_learn_comment("a", 9), _learn_comment("b", 11, captured=True), later]}),
+            learn_signal=FakeLearnSignal(
+                {42: [_learn_comment("a", 9, captured=True), _learn_comment("b", 11, captured=True), later]}
+            ),
             lesson_repository=FakeLessonRepository(lessons=[lesson]),
         )
 
