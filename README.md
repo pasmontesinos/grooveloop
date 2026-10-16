@@ -110,7 +110,7 @@ The loop keeps the state of each slice in the labels of its sub-issue:
 |---|---|
 | `pending`, `dispatched`, `under_review`, `pr_open`, `changes_requested`, `blocked`, `merged`, `failed` | Lifecycle state of the slice. |
 | `review:approve`, `review:minor`, `review:blocking`, `review:blocked` | Verdict of the automated reviewer. |
-| `review-round:N` | Automatic correction rounds already spent. |
+| `review-round:N` | Automatic correction rounds already spent. A correction may also rebut the findings of a `review:blocking` verdict, without commits, with a reasoned pull request comment ending with `<!-- grooveloop:no-changes -->`; the reviewer then judges the rebuttal, and a new blocking verdict spends another round. |
 | `retry:N`, `failure:<cause>` | Retries of the current phase, and the cause when the slice fails for good. |
 | `story:N`, `order:N`, `run:<id>`, `pr:N` | Links to the Story, the position, the agent run and the pull request. |
 

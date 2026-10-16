@@ -13,10 +13,8 @@ from grooveloop.delivery.application.services.slice_retry import SliceRetry
 from grooveloop.delivery.application.tasks.addressing_task import AddressingTask
 from grooveloop.delivery.application.tasks.review_task import ReviewTask
 from grooveloop.delivery.application.tasks.story_journal_section import StoryJournalSection
-from grooveloop.delivery.domain.directive_mark import DirectiveMark
 from grooveloop.delivery.domain.pull_request import PullRequest
 from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
-from grooveloop.delivery.domain.review_comment import ReviewComment
 from grooveloop.delivery.domain.review_verdict import ReviewVerdict
 from grooveloop.delivery.domain.slice_id import SliceId
 from grooveloop.delivery.domain.slice_status import SliceStatus
@@ -26,7 +24,6 @@ from grooveloop.shared.domain.agent_profile import AgentProfile
 from grooveloop.shared.domain.agent_run_verdict import AgentRunVerdict
 from grooveloop.shared.domain.agent_task_type import AgentTaskType
 from grooveloop.shared.domain.clock import Clock
-from grooveloop.shared.domain.comment_directive import CommentDirective
 from tests.grooveloop.delivery.mothers.slice_mother import SliceMother
 from tests.playground.shared.infrastructure.fake_agent_profiles import FakeAgentProfiles
 from tests.playground.shared.infrastructure.fake_agent_runner import FakeAgentRunner
@@ -124,7 +121,9 @@ class TestResumeReviewPhaseCommandHandler:
         assert a_slice.review_rounds == 1
         assert a_slice.agent_run_id == "resumed-run"
 
-    def test_should_resume_the_correction_that_finished_without_new_commits(self) -> None:
+    def test_should_resume_the_correction_that_finished_without_new_commits_asking_to_push_or_to_explain(
+        self,
+    ) -> None:
         repository = FakeSliceRepository(
             {StoryId("10"): [_slice_with_a_pull_request_and_an_agent_run(SliceStatus.CHANGES_REQUESTED)]}
         )
@@ -137,33 +136,11 @@ class TestResumeReviewPhaseCommandHandler:
         assert a_slice is not None
         assert agent_runner.resumed_count == 1
         assert "push to the PR branch" in agent_runner.last_resume_instruction
+        assert "`gh pr comment 42`" in agent_runner.last_resume_instruction
+        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_resume_instruction
         assert a_slice.status == SliceStatus.CHANGES_REQUESTED
         assert a_slice.retries == 1
         assert a_slice.agent_run_id == "resumed-run"
-        assert "<!-- grooveloop:no-changes -->" not in agent_runner.last_resume_instruction
-
-    def test_should_ask_to_push_or_to_explain_when_resuming_the_correction_of_a_taken_directive(self) -> None:
-        directive = ReviewComment(
-            body="/grooveloop-implement rename it",
-            created_at=_FINISHED_AT - timedelta(hours=3),
-            directives=frozenset({CommentDirective.IMPLEMENT}),
-            marks=frozenset({DirectiveMark.TAKEN}),
-            taken_at=_FINISHED_AT - timedelta(hours=2),
-        )
-        a_slice = _slice_with_a_pull_request_and_an_agent_run(
-            SliceStatus.CHANGES_REQUESTED,
-            review_rounds=0,
-            pull_request=PullRequest(number=PullRequestNumber(42), comments=[directive]),
-        )
-        repository = FakeSliceRepository({StoryId("10"): [a_slice]})
-        agent_runner = FakeAgentRunner(verdict=_succeeded(), resumable=True)
-        handler = _handler(repository, agent_runner, _FINISHED_AT + timedelta(hours=1))
-
-        handler(_command())
-
-        assert "push to the PR branch" in agent_runner.last_resume_instruction
-        assert "`gh pr comment 42`" in agent_runner.last_resume_instruction
-        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_resume_instruction
 
     def test_should_redispatch_the_reviewer_when_its_run_cannot_be_resumed(self) -> None:
         repository = FakeSliceRepository(

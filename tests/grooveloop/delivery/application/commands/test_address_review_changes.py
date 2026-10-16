@@ -552,7 +552,7 @@ class TestAddressReviewChangesCommandHandler:
         assert "`gh pr comment 42`" in agent_runner.last_instruction
         assert "<!-- grooveloop:no-changes -->" in agent_runner.last_instruction
 
-    def test_does_not_offer_the_marked_reply_when_the_correction_is_automatic(self) -> None:
+    def test_lets_the_developer_rebut_a_blocking_verdict_with_a_marked_reply_instead_of_commits(self) -> None:
         repository = FakeSliceRepository({StoryId("10"): [_under_review_slice()]})
         agent_runner = FakeAgentRunner()
         handler = AddressReviewChangesCommandHandler(
@@ -565,7 +565,9 @@ class TestAddressReviewChangesCommandHandler:
 
         handler(_automatic_command())
 
-        assert "<!-- grooveloop:no-changes -->" not in agent_runner.last_instruction
+        assert "rebut" in agent_runner.last_instruction
+        assert "`gh pr comment 42`" in agent_runner.last_instruction
+        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_instruction
 
     def test_consumes_no_review_round_when_the_human_asks_for_the_correction(self) -> None:
         repository = FakeSliceRepository({StoryId("10"): [_blocked_slice()]})
