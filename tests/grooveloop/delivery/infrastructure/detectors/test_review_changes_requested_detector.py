@@ -34,6 +34,7 @@ def _slice_with_a_pull_request(
     status: SliceStatus,
     comment_day: int | None = None,
     last_commit_day: int | None = None,
+    review_summary_day: int | None = None,
 ) -> Slice:
     return SliceMother.create(
         slice_id="12",
@@ -42,6 +43,7 @@ def _slice_with_a_pull_request(
             number=PullRequestNumber(42),
             comments=[_comment(comment_day)] if comment_day else [],
             last_commit_at=datetime(2026, 6, last_commit_day, tzinfo=UTC) if last_commit_day else None,
+            review_summary_at=datetime(2026, 6, review_summary_day, tzinfo=UTC) if review_summary_day else None,
         ),
     )
 
@@ -74,6 +76,20 @@ class TestReviewChangesRequestedDetector:
     def test_does_not_emit_when_there_are_commits_after_the_comment(self) -> None:
         repository = FakeSliceRepository(
             {StoryId("10"): [_slice_with_a_pull_request(SliceStatus.PR_OPEN, comment_day=2, last_commit_day=3)]}
+        )
+        detector = ReviewChangesRequestedDetector(slice_repository=repository)
+
+        assert list(detector.detect()) == []
+
+    def test_does_not_emit_when_an_approving_review_summary_follows_the_commit_after_the_comment(self) -> None:
+        repository = FakeSliceRepository(
+            {
+                StoryId("10"): [
+                    _slice_with_a_pull_request(
+                        SliceStatus.PR_OPEN, comment_day=2, last_commit_day=3, review_summary_day=4
+                    )
+                ]
+            }
         )
         detector = ReviewChangesRequestedDetector(slice_repository=repository)
 

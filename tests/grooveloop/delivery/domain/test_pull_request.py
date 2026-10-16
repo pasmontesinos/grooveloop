@@ -91,6 +91,30 @@ class TestPullRequest:
         assert pull_request.has_commits_after_review() is True
         assert pull_request.has_unaddressed_comments() is False
 
+    def test_has_no_unaddressed_comments_when_an_approving_review_summary_follows_the_commit_after_the_directive(
+        self,
+    ) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(2)],
+            last_commit_at=datetime(2026, 6, 3, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 4, tzinfo=UTC),
+        )
+
+        assert pull_request.has_unaddressed_comments() is False
+
+    def test_has_unaddressed_comments_when_the_directive_is_newer_than_the_last_commit_whatever_the_summary(
+        self,
+    ) -> None:
+        pull_request = PullRequest(
+            number=PullRequestNumber(42),
+            comments=[_comment(3)],
+            last_commit_at=datetime(2026, 6, 2, tzinfo=UTC),
+            review_summary_at=datetime(2026, 6, 1, tzinfo=UTC),
+        )
+
+        assert pull_request.has_unaddressed_comments() is True
+
     def test_is_closed_without_merge_when_closed_and_not_merged(self) -> None:
         pull_request = PullRequest(number=PullRequestNumber(42), comments=[], closed=True)
 
