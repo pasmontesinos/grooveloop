@@ -198,11 +198,17 @@ class GithubSliceRepository(SliceRepository):
             merged=pull.merged,
             closed=pull.closed,
             review_summary_at=self._latest_marked_at(pull, _REVIEW_SUMMARY_MARKER),
-            no_changes_reply_at=self._latest_marked_at(pull, _NO_CHANGES_MARKER),
+            no_changes_reply_at=self._latest_ending_with_at(pull, _NO_CHANGES_MARKER),
         )
 
     def _latest_marked_at(self, pull: PullRequestNode, marker: str) -> datetime | None:
         return max((comment.created_at for comment in pull.conversation if marker in comment.body), default=None)
+
+    def _latest_ending_with_at(self, pull: PullRequestNode, marker: str) -> datetime | None:
+        return max(
+            (comment.created_at for comment in pull.conversation if comment.body.rstrip().endswith(marker)),
+            default=None,
+        )
 
     def _comments_from(self, pull: PullRequestNode) -> list[ReviewComment]:
         inline = [self._inline_comment(comment) for comment in pull.review]

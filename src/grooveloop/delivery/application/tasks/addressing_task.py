@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-_NO_CHANGES_MARKER = "<!-- grooveloop:no-changes -->"
-
 if TYPE_CHECKING:
     from grooveloop.delivery.domain.review_comment import ReviewComment
     from grooveloop.delivery.domain.slice import Slice
+
+_NO_CHANGES_MARKER = "<!-- grooveloop:no-changes -->"
 
 
 class AddressingTask:
