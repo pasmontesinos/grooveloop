@@ -258,7 +258,7 @@ class DeliveryModule(Module):
 
     @provider
     def directive_marker(self, github: Github, target_repo: TargetRepo, cache: GithubReadCache) -> DirectiveMarker:
-        return GithubDirectiveMarker(target_repository(github, target_repo, cache))
+        return GithubDirectiveMarker(target_repository(github, target_repo, cache), cache)
 
     @provider
     def agent_session_repository(

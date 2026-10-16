@@ -15,6 +15,8 @@ _PULL_REQUEST_MARKER = "pullRequest(number: $number)"
 _LABELED_PULLS_MARKER = "pullRequests("
 _STORY_PULLS_MARKER = "$labels"
 _ADD_REACTION_MARKER = "addReaction"
+_REMOVE_REACTION_MARKER = "removeReaction"
+_REACTED_AT = "2026-07-01T00:00:00Z"
 _REACTIONS_MARKER = "... on Reactable"
 
 
@@ -231,7 +233,12 @@ def _answering_reactions(
 ) -> Callable[[str, dict[str, Any]], tuple[dict[str, Any], dict[str, Any]]]:
     def answer(document: str, variables: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         if _ADD_REACTION_MARKER in document:
+            _react(nodes, variables["subject"], variables["content"])
             return {}, {"data": {"addReaction": {"reaction": {"content": variables["content"]}}}}
+
+        if _REMOVE_REACTION_MARKER in document:
+            _unreact(nodes, variables["subject"], variables["content"])
+            return {}, {"data": {"removeReaction": {"reaction": {"content": variables["content"]}}}}
 
         if _REACTIONS_MARKER in document:
             return {}, {"data": {"node": {"reactions": {"nodes": _eyes_of(nodes, variables["id"])}}}}
@@ -241,11 +248,37 @@ def _answering_reactions(
     return answer
 
 
-def _eyes_of(nodes: list[dict[str, Any]], comment_id: str) -> list[dict[str, Any]]:
-    comment = next(comment for comment in _comments_of(nodes) if comment["id"] == comment_id)
+def _react(nodes: list[dict[str, Any]], comment_id: str, content: str) -> None:
+    groups = _comment(nodes, comment_id)["reactionGroups"]
+    group = next((group for group in groups if group["content"] == content), None)
+    if group is None:
+        groups.append(reaction_group(content, reacted_at=_REACTED_AT))
+        return
 
+    if group["viewerHasReacted"]:
+        return
+
+    group["viewerHasReacted"] = True
+    group["reactions"].append({"createdAt": _REACTED_AT, "user": {"isViewer": True}})
+
+
+def _unreact(nodes: list[dict[str, Any]], comment_id: str, content: str) -> None:
+    for group in _comment(nodes, comment_id)["reactionGroups"]:
+        if group["content"] == content:
+            group["viewerHasReacted"] = False
+            group["reactions"] = [reaction for reaction in group["reactions"] if not reaction["user"]["isViewer"]]
+
+
+def _comment(nodes: list[dict[str, Any]], comment_id: str) -> dict[str, Any]:
+    return next(comment for comment in _comments_of(nodes) if comment["id"] == comment_id)
+
+
+def _eyes_of(nodes: list[dict[str, Any]], comment_id: str) -> list[dict[str, Any]]:
     return [
-        reaction for group in comment["reactionGroups"] if group["content"] == "EYES" for reaction in group["reactions"]
+        reaction
+        for group in _comment(nodes, comment_id)["reactionGroups"]
+        if group["content"] == "EYES"
+        for reaction in group["reactions"]
     ]
 
 

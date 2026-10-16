@@ -8,12 +8,17 @@ from grooveloop.delivery.domain.directive_mark import DirectiveMark
 REACTION_OF_MARK = {DirectiveMark.TAKEN: "EYES", DirectiveMark.ADDRESSED: "ROCKET"}
 
 _REACTIONS_LIMIT = 100
+_TAKEN_AT_KEY_PREFIX = "reactions:taken-at:"
 
 TAKEN_AT_QUERY = (
     "query($id: ID!) { node(id: $id) { ... on Reactable {"
     f" reactions(content: {REACTION_OF_MARK[DirectiveMark.TAKEN]}, last: {_REACTIONS_LIMIT})"
     " { nodes { createdAt user { isViewer } } } } } }"
 )
+
+
+def taken_at_key(comment_id: str) -> str:
+    return f"{_TAKEN_AT_KEY_PREFIX}{comment_id}"
 
 
 def marks_of(reactions: frozenset[str]) -> frozenset[DirectiveMark]:
