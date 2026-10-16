@@ -770,3 +770,55 @@ class TestReviewPullRequestCommandHandlerDirectiveMarks:
         )
 
         assert marker.calls == []
+
+
+class TestReviewPullRequestCommandHandlerCorrectionWithoutChanges:
+    def _slice_declining_a_taken_directive(self) -> Slice:
+        taken = ReviewComment(
+            body="/grooveloop-implement rename it",
+            created_at=datetime(2026, 6, 3, tzinfo=UTC),
+            directives=frozenset({CommentDirective.IMPLEMENT}),
+            marks=frozenset({DirectiveMark.TAKEN}),
+            taken_at=datetime(2026, 6, 4, tzinfo=UTC),
+        )
+
+        return SliceMother.create(
+            slice_id="12",
+            status=SliceStatus.CHANGES_REQUESTED,
+            title="implement the SliceRepository",
+            pull_request=PullRequest(
+                number=PullRequestNumber(99),
+                comments=[taken],
+                last_commit_at=datetime(2026, 6, 2, tzinfo=UTC),
+                no_changes_reply_at=datetime(2026, 6, 5, tzinfo=UTC),
+            ),
+        )
+
+    def test_tells_the_reviewer_that_the_developer_declined_to_change_code(self) -> None:
+        agent_runner = FakeAgentRunner()
+        handler = ReviewPullRequestCommandHandler(
+            slice_repository=FakeSliceRepository({StoryId("10"): [self._slice_declining_a_taken_directive()]}),
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_reviewer()]),
+            review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
+        )
+
+        handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
+
+        assert "declined to change code" in agent_runner.last_instruction
+        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_instruction
+
+    def test_does_not_mention_a_declined_correction_when_the_developer_pushed_commits(self) -> None:
+        agent_runner = FakeAgentRunner()
+        handler = ReviewPullRequestCommandHandler(
+            slice_repository=FakeSliceRepository({StoryId("10"): [_corrected_slice()]}),
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_reviewer()]),
+            review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
+        )
+
+        handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
+
+        assert "declined to change code" not in agent_runner.last_instruction

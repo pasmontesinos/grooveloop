@@ -536,6 +536,37 @@ class TestAddressReviewChangesCommandHandler:
         assert "automatic reviewer" in agent_runner.last_instruction
         assert "Request changes" not in agent_runner.last_instruction
 
+    def test_lets_the_developer_address_a_human_directive_with_a_marked_reply_instead_of_commits(self) -> None:
+        repository = FakeSliceRepository({StoryId("10"): [_pr_open_slice()]})
+        agent_runner = FakeAgentRunner()
+        handler = AddressReviewChangesCommandHandler(
+            slice_repository=repository,
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_developer()]),
+            addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
+        )
+
+        handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
+
+        assert "`gh pr comment 42`" in agent_runner.last_instruction
+        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_instruction
+
+    def test_does_not_offer_the_marked_reply_when_the_correction_is_automatic(self) -> None:
+        repository = FakeSliceRepository({StoryId("10"): [_under_review_slice()]})
+        agent_runner = FakeAgentRunner()
+        handler = AddressReviewChangesCommandHandler(
+            slice_repository=repository,
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_developer()]),
+            addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
+        )
+
+        handler(_automatic_command())
+
+        assert "<!-- grooveloop:no-changes -->" not in agent_runner.last_instruction
+
     def test_consumes_no_review_round_when_the_human_asks_for_the_correction(self) -> None:
         repository = FakeSliceRepository({StoryId("10"): [_blocked_slice()]})
         handler = AddressReviewChangesCommandHandler(

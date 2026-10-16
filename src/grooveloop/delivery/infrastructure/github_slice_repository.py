@@ -55,6 +55,7 @@ _RETRY_LABEL_PREFIX = "retry:"
 _FAILURE_LABEL_PREFIX = "failure:"
 _STATUS_VALUES = {status.value for status in SliceStatus}
 _REVIEW_SUMMARY_MARKER = "<!-- grooveloop:review -->"
+_NO_CHANGES_MARKER = "<!-- grooveloop:no-changes -->"
 _TTL_SECONDS = 300
 _ISSUE_KEY_PREFIX = "issues:slice-graph:issue:"
 
@@ -196,12 +197,16 @@ class GithubSliceRepository(SliceRepository):
             last_commit_at=pull.last_commit_at,
             merged=pull.merged,
             closed=pull.closed,
-            review_summary_at=self._review_summary_at(pull),
+            review_summary_at=self._latest_marked_at(pull, _REVIEW_SUMMARY_MARKER),
+            no_changes_reply_at=self._latest_ending_with_at(pull, _NO_CHANGES_MARKER),
         )
 
-    def _review_summary_at(self, pull: PullRequestNode) -> datetime | None:
+    def _latest_marked_at(self, pull: PullRequestNode, marker: str) -> datetime | None:
+        return max((comment.created_at for comment in pull.conversation if marker in comment.body), default=None)
+
+    def _latest_ending_with_at(self, pull: PullRequestNode, marker: str) -> datetime | None:
         return max(
-            (comment.created_at for comment in pull.conversation if _REVIEW_SUMMARY_MARKER in comment.body),
+            (comment.created_at for comment in pull.conversation if comment.body.rstrip().endswith(marker)),
             default=None,
         )
 

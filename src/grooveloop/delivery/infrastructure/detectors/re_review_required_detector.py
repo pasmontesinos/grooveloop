@@ -18,7 +18,7 @@ class ReReviewRequiredDetector:
     def detect(self) -> Iterator[ReReviewRequired]:
         for a_slice in self._slice_repository.search(status=SliceStatus.CHANGES_REQUESTED, open=True):
             pull_request = a_slice.pull_request
-            if pull_request is None or not a_slice.has_commits_after_review():
+            if pull_request is None or not a_slice.has_correction_after_review():
                 continue
 
             yield ReReviewRequired(slice_id=a_slice.id, pull_request_number=pull_request.number)
