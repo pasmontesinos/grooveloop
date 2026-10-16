@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from grooveloop.delivery.domain.directive_mark import DirectiveMark
 from grooveloop.delivery.domain.slice_id import SliceId
 from grooveloop.shared.application.commands.command import Command
 from grooveloop.shared.application.commands.command_handler import CommandHandler
@@ -10,6 +11,7 @@ from grooveloop.shared.domain.agent_task_type import AgentTaskType
 
 if TYPE_CHECKING:
     from grooveloop.delivery.application.tasks.addressing_task import AddressingTask
+    from grooveloop.delivery.domain.directive_marker import DirectiveMarker
     from grooveloop.delivery.domain.slice_repository import SliceRepository
     from grooveloop.shared.domain.agent_profiles import AgentProfiles
     from grooveloop.shared.domain.agent_runner_registry import AgentRunnerRegistry
@@ -33,11 +35,13 @@ class AddressReviewChangesCommandHandler(CommandHandler[AddressReviewChangesComm
         agent_runner_registry: AgentRunnerRegistry,
         agent_profiles: AgentProfiles,
         addressing_task: AddressingTask,
+        directive_marker: DirectiveMarker,
     ) -> None:
         self._slice_repository = slice_repository
         self._agent_runner_registry = agent_runner_registry
         self._agent_profiles = agent_profiles
         self._addressing_task = addressing_task
+        self._directive_marker = directive_marker
 
     def __call__(self, command: AddressReviewChangesCommand) -> None:
         a_slice = self._slice_repository.find(SliceId(command.slice_id))
@@ -47,6 +51,10 @@ class AddressReviewChangesCommandHandler(CommandHandler[AddressReviewChangesComm
         profile = self._agent_profiles.find(_DEVELOPER_PROFILE)
         if profile is None:
             return
+
+        if not command.automatic:
+            self._directive_marker.mark(a_slice.addressed_directives_without_mark(), DirectiveMark.ADDRESSED)
+            self._directive_marker.mark(a_slice.pending_directives(), DirectiveMark.TAKEN)
 
         task = self._addressing_task.build(a_slice, automatic=command.automatic)
         run = self._agent_runner_registry.runner_for(profile.engine).dispatch(

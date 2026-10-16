@@ -32,8 +32,11 @@ _THREADS_LIMIT = 30
 _THREAD_COMMENTS_LIMIT = 20
 
 _PAGE_INFO = "pageInfo { hasNextPage endCursor }"
-_CONVERSATION_COMMENT_FIELDS = "author { login } body createdAt"
-_REVIEW_COMMENT_FIELDS = "databaseId author { login } body path line diffHunk createdAt replyTo { databaseId }"
+_REACTION_FIELDS = "reactionGroups { content viewerHasReacted }"
+_CONVERSATION_COMMENT_FIELDS = f"id author {{ login }} body createdAt {_REACTION_FIELDS}"
+_REVIEW_COMMENT_FIELDS = (
+    f"id databaseId author {{ login }} body path line diffHunk createdAt replyTo {{ databaseId }} {_REACTION_FIELDS}"
+)
 
 _PULL_REQUEST_FIELDS = f"""
   number
@@ -161,6 +164,8 @@ class CommentNode:
     reply_to_id: int | None = None
     diff_hunk: str | None = None
     author: str | None = None
+    node_id: str | None = None
+    viewer_reactions: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -540,6 +545,8 @@ def _to_conversation_comment(comment: dict[str, Any]) -> CommentNode:
         body=comment["body"] or "",
         created_at=datetime.fromisoformat(comment["createdAt"]),
         author=_author_of(comment),
+        node_id=comment["id"],
+        viewer_reactions=_viewer_reactions_of(comment),
     )
 
 
@@ -555,7 +562,13 @@ def _to_review_comment(comment: dict[str, Any]) -> CommentNode:
         reply_to_id=reply_to["databaseId"] if reply_to is not None else None,
         diff_hunk=comment["diffHunk"],
         author=_author_of(comment),
+        node_id=comment["id"],
+        viewer_reactions=_viewer_reactions_of(comment),
     )
+
+
+def _viewer_reactions_of(comment: dict[str, Any]) -> frozenset[str]:
+    return frozenset(group["content"] for group in comment["reactionGroups"] if group["viewerHasReacted"])
 
 
 def _author_of(comment: dict[str, Any]) -> str | None:
