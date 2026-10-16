@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from grooveloop.learning.application.queries.pending_lessons import PendingLessonsQueryHandler
 from grooveloop.learning.domain.conventions_pull_request import ConventionsPullRequest
 from grooveloop.learning.domain.lesson import Lesson
@@ -29,6 +31,7 @@ def _lesson(
             ConventionsPullRequest(conventions_pull_request) if conventions_pull_request is not None else None
         ),
         open=True,
+        captured_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
 

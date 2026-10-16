@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from grooveloop.learning.application.commands.close_lesson import CloseLessonCommand, CloseLessonCommandHandler
 from grooveloop.learning.domain.lesson import Lesson
 from grooveloop.learning.domain.lesson_id import LessonId
@@ -23,6 +25,7 @@ def _closed(id: str, number: int) -> Lesson:
         comments=[],
         conventions_pull_request=None,
         open=False,
+        captured_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import create_autospec
 
 import pytest
@@ -20,6 +20,9 @@ from grooveloop.shared.domain.clock import Clock
 from grooveloop.shared.infrastructure.github_read_cache import GithubReadCache
 from tests.grooveloop.learning.mothers.lesson_mother import LessonMother
 
+if TYPE_CHECKING:
+    from grooveloop.learning.domain.lesson import Lesson
+
 
 def _cache() -> GithubReadCache:
     clock = create_autospec(Clock, spec_set=True, instance=True)
@@ -35,11 +38,14 @@ def _label(name: str) -> Any:
     return label
 
 
-def _lesson_issue(number: int, label_names: list[str], state: str = "open") -> Any:
+def _lesson_issue(
+    number: int, label_names: list[str], state: str = "open", created_at: datetime = datetime(2026, 1, 1, tzinfo=UTC)
+) -> Any:
     issue = create_autospec(Issue, spec_set=True, instance=True)
     issue.number = number
     issue.pull_request = None
     issue.state = state
+    issue.created_at = created_at
     issue.labels = [_label(name) for name in label_names]
 
     return issue
@@ -50,6 +56,13 @@ def _repo(issues: list[Any]) -> Any:
     repo.get_issues.side_effect = lambda state, labels: list(issues)
 
     return repo
+
+
+def _lesson_of_pull_request(repository: GithubLessonRepository, number: int) -> Lesson | None:
+    lessons = repository.search(source_pull_request=SourcePullRequest(number))
+    assert len(lessons) <= 1
+
+    return lessons[0] if lessons else None
 
 
 @pytest.mark.integration
@@ -67,6 +80,8 @@ class TestGithubLessonRepository:
                     path="src/x.py",
                     line=10,
                     diff_hunk="@@ @@",
+                    id=None,
+                    written_at=datetime(2026, 1, 1, tzinfo=UTC),
                 ),
             ],
         )
@@ -81,11 +96,11 @@ class TestGithubLessonRepository:
         assert "learning:in_progress" in labels
         assert "story:277" in labels
 
-    def test_find_by_source_pull_request_returns_the_lesson_from_its_labels(self) -> None:
+    def test_search_by_source_pull_request_returns_the_lesson_from_its_labels(self) -> None:
         issue = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:in_progress"])
         repository = GithubLessonRepository(_repo([issue]), _cache())
 
-        lesson = repository.find_by_source_pull_request(SourcePullRequest(42))
+        lesson = _lesson_of_pull_request(repository, 42)
 
         assert lesson is not None
         assert lesson.id is not None
@@ -93,28 +108,48 @@ class TestGithubLessonRepository:
         assert lesson.source_pull_request == SourcePullRequest(42)
         assert lesson.status == LessonStatus.IN_PROGRESS
 
-    def test_find_by_source_pull_request_reads_the_story_from_its_label(self) -> None:
+    def test_search_by_source_pull_request_reads_the_story_from_its_label(self) -> None:
         issue = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:in_progress", "story:277"])
         repository = GithubLessonRepository(_repo([issue]), _cache())
 
-        lesson = repository.find_by_source_pull_request(SourcePullRequest(42))
+        lesson = _lesson_of_pull_request(repository, 42)
 
         assert lesson is not None
         assert lesson.story_id == StoryId("277")
 
-    def test_find_by_source_pull_request_reads_a_lesson_predating_the_story_label(self) -> None:
+    def test_search_by_source_pull_request_reads_a_lesson_predating_the_story_label(self) -> None:
         issue = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:discarded"])
         repository = GithubLessonRepository(_repo([issue]), _cache())
 
-        lesson = repository.find_by_source_pull_request(SourcePullRequest(42))
+        lesson = _lesson_of_pull_request(repository, 42)
 
         assert lesson is not None
         assert lesson.story_id is None
 
-    def test_find_by_source_pull_request_returns_none_when_absent(self) -> None:
+    def test_search_by_source_pull_request_returns_none_when_absent(self) -> None:
         repository = GithubLessonRepository(_repo([]), _cache())
 
-        assert repository.find_by_source_pull_request(SourcePullRequest(42)) is None
+        assert _lesson_of_pull_request(repository, 42) is None
+
+    def test_search_by_source_pull_request_returns_every_lesson_of_the_pull_request(self) -> None:
+        first = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:learned"])
+        second = _lesson_issue(501, ["grooveloop", "lesson", "source_pr:42", "learning:in_progress"])
+        other = _lesson_issue(502, ["grooveloop", "lesson", "source_pr:7", "learning:in_progress"])
+        repository = GithubLessonRepository(_repo([first, second, other]), _cache())
+
+        result = repository.search(source_pull_request=SourcePullRequest(42))
+
+        assert [lesson.id for lesson in result] == [LessonId("500"), LessonId("501")]
+
+    def test_search_reads_the_capture_instant_from_the_creation_of_the_sub_issue(self) -> None:
+        captured_at = datetime(2026, 10, 16, 9, 30, tzinfo=UTC)
+        issue = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:learned"], created_at=captured_at)
+        repository = GithubLessonRepository(_repo([issue]), _cache())
+
+        lesson = _lesson_of_pull_request(repository, 42)
+
+        assert lesson is not None
+        assert lesson.captured_at == captured_at
 
     def test_search_filters_by_status(self) -> None:
         in_progress = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:in_progress"])
@@ -135,28 +170,35 @@ class TestGithubLessonRepository:
 
         assert [lesson.source_pull_request.value for lesson in result] == [42]
 
-    def test_save_is_idempotent_when_the_lesson_already_exists(self) -> None:
+    def test_save_updates_the_sub_issue_of_a_lesson_with_identity(self) -> None:
         issue = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:in_progress"])
         repo = _repo([issue])
         repo.get_issue.side_effect = lambda number: issue
         repository = GithubLessonRepository(repo, _cache())
-        lesson = LessonMother.create(
-            source_pull_request=42,
-            story_id="277",
-            comments=[LessonComment(body="/grooveloop-learn: x", path="", line=0, diff_hunk="")],
-        )
 
-        repository.save(lesson)
+        repository.save(LessonMother.create(lesson_id="500", source_pull_request=42, story_id="277"))
 
         repo.create_issue.assert_not_called()
         issue.set_labels.assert_called_once()
+
+    def test_save_creates_a_new_sub_issue_for_a_pull_request_that_already_has_a_lesson(self) -> None:
+        issue = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:learned", "conv_pr:101"])
+        repo = _repo([issue])
+        repo.get_issue.side_effect = lambda number: issue
+        repository = GithubLessonRepository(repo, _cache())
+
+        repository.save(LessonMother.create(source_pull_request=42, story_id="277"))
+
+        repo.create_issue.assert_called_once()
+        assert "source_pr:42" in repo.create_issue.call_args.kwargs["labels"]
+        issue.set_labels.assert_not_called()
 
     def test_save_writes_the_conventions_pull_request_label_for_a_learned_lesson(self) -> None:
         issue = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:in_progress"])
         repo = _repo([issue])
         repo.get_issue.side_effect = lambda number: issue
         repository = GithubLessonRepository(repo, _cache())
-        lesson = repository.find_by_source_pull_request(SourcePullRequest(42))
+        lesson = _lesson_of_pull_request(repository, 42)
         assert lesson is not None
         lesson.learn(ConventionsPullRequest(101))
 
@@ -171,7 +213,7 @@ class TestGithubLessonRepository:
         issue = _lesson_issue(501, ["grooveloop", "lesson", "source_pr:7", "learning:learned", "conv_pr:101"])
         repository = GithubLessonRepository(_repo([issue]), _cache())
 
-        lesson = repository.find_by_source_pull_request(SourcePullRequest(7))
+        lesson = _lesson_of_pull_request(repository, 7)
 
         assert lesson is not None
         assert lesson.status == LessonStatus.LEARNED
@@ -181,7 +223,7 @@ class TestGithubLessonRepository:
         issue = _lesson_issue(500, ["grooveloop", "lesson", "source_pr:42", "learning:discarded"], state="closed")
         repository = GithubLessonRepository(_repo([issue]), _cache())
 
-        lesson = repository.find_by_source_pull_request(SourcePullRequest(42))
+        lesson = _lesson_of_pull_request(repository, 42)
 
         assert lesson is not None
         assert lesson.is_open is False
@@ -191,7 +233,7 @@ class TestGithubLessonRepository:
         repo = _repo([issue])
         repo.get_issue.side_effect = lambda number: issue
         repository = GithubLessonRepository(repo, _cache())
-        lesson = repository.find_by_source_pull_request(SourcePullRequest(42))
+        lesson = _lesson_of_pull_request(repository, 42)
         assert lesson is not None
         lesson.close()
 
@@ -204,7 +246,7 @@ class TestGithubLessonRepository:
         repo = _repo([issue])
         repo.get_issue.side_effect = lambda number: issue
         repository = GithubLessonRepository(repo, _cache())
-        lesson = repository.find_by_source_pull_request(SourcePullRequest(42))
+        lesson = _lesson_of_pull_request(repository, 42)
         assert lesson is not None
         lesson.discard()
 

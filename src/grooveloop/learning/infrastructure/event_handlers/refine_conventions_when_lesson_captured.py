@@ -24,7 +24,14 @@ class RefineConventionsWhenLessonCaptured(EventHandler[LessonCaptured]):
                 source_pull_request=event.source_pull_request.value,
                 story_id=event.story_id.value,
                 comments=[
-                    {"body": comment.body, "path": comment.path, "line": comment.line, "diff_hunk": comment.diff_hunk}
+                    {
+                        "body": comment.body,
+                        "path": comment.path,
+                        "line": comment.line,
+                        "diff_hunk": comment.diff_hunk,
+                        "id": comment.id,
+                        "written_at": comment.written_at,
+                    }
                     for comment in event.comments
                 ],
                 workdir=workdir.value,

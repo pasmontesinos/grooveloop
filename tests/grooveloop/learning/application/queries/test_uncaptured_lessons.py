@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from grooveloop.learning.application.queries.uncaptured_lessons import UncapturedLessonsQueryHandler
 from grooveloop.learning.domain.lesson import Lesson
 from grooveloop.learning.domain.lesson_comment import LessonComment
@@ -12,8 +14,15 @@ from tests.playground.shared.infrastructure.fake_learn_signal import FakeLearnSi
 from tests.playground.shared.infrastructure.fake_lesson_repository import FakeLessonRepository
 
 
-def _learn_comment() -> LessonComment:
-    return LessonComment(body="/grooveloop-learn something", path="src/x.py", line=10, diff_hunk="@@ @@")
+def _learn_comment(day: int = 1) -> LessonComment:
+    return LessonComment(
+        body="/grooveloop-learn something",
+        path="src/x.py",
+        line=10,
+        diff_hunk="@@ @@",
+        id=None,
+        written_at=datetime(2026, 1, day, tzinfo=UTC),
+    )
 
 
 def _lesson(source_pull_request: int) -> Lesson:
@@ -25,6 +34,7 @@ def _lesson(source_pull_request: int) -> Lesson:
         comments=[],
         conventions_pull_request=None,
         open=True,
+        captured_at=datetime(2026, 1, 2, tzinfo=UTC),
     )
 
 
@@ -48,6 +58,16 @@ class TestUncapturedLessonsQueryHandler:
         result = handler(UncapturedLessonsQuery(pull_request_numbers=[42]))
 
         assert result.pull_request_numbers == []
+
+    def test_returns_a_pull_request_with_a_learn_directive_written_after_its_lesson(self) -> None:
+        handler = UncapturedLessonsQueryHandler(
+            learn_signal=FakeLearnSignal(comments={42: [_learn_comment(), _learn_comment(day=3)]}),
+            lesson_repository=FakeLessonRepository(lessons=[_lesson(42)]),
+        )
+
+        result = handler(UncapturedLessonsQuery(pull_request_numbers=[42]))
+
+        assert result.pull_request_numbers == [42]
 
     def test_ignores_a_pull_request_that_is_not_merged(self) -> None:
         handler = UncapturedLessonsQueryHandler(

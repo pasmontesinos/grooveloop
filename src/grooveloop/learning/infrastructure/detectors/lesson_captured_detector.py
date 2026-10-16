@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from grooveloop.learning.domain.events import LessonCaptured
+from grooveloop.learning.domain.uncaptured_comments import uncaptured_comments
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -18,10 +19,11 @@ class LessonCapturedDetector:
 
     def detect(self) -> Iterator[LessonCaptured]:
         for source_pull_request in self._learn_signal.merged_pull_requests():
-            if self._lesson_repository.find_by_source_pull_request(source_pull_request) is not None:
+            lessons = self._lesson_repository.search(source_pull_request=source_pull_request)
+            if any(lesson.is_in_progress() for lesson in lessons):
                 continue
 
-            comments = self._learn_signal.comments_of(source_pull_request)
+            comments = uncaptured_comments(self._learn_signal.comments_of(source_pull_request), lessons)
             if not comments:
                 continue
 

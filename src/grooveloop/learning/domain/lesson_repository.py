@@ -16,10 +16,12 @@ class LessonRepository(ABC):
     def find(self, id: LessonId) -> Lesson | None: ...
 
     @abstractmethod
-    def find_by_source_pull_request(self, source_pull_request: SourcePullRequest) -> Lesson | None: ...
-
-    @abstractmethod
     def save(self, lesson: Lesson) -> None: ...
 
     @abstractmethod
-    def search(self, status: LessonStatus | None = None, story_id: StoryId | None = None) -> list[Lesson]: ...
+    def search(
+        self,
+        status: LessonStatus | None = None,
+        story_id: StoryId | None = None,
+        source_pull_request: SourcePullRequest | None = None,
+    ) -> list[Lesson]: ...

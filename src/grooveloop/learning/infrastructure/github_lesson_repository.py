@@ -37,20 +37,10 @@ class GithubLessonRepository(LessonRepository):
 
         return self._to_lesson(issue)
 
-    def find_by_source_pull_request(self, source_pull_request: SourcePullRequest) -> Lesson | None:
-        target = f"{_SOURCE_PR_LABEL_PREFIX}{source_pull_request.value}"
-
-        for issue in self._lesson_issues():
-            if any(label.name == target for label in issue.labels):
-                return self._to_lesson(issue)
-
-        return None
-
     def save(self, lesson: Lesson) -> None:
-        existing = self.find_by_source_pull_request(lesson.source_pull_request)
         status_label = f"{_STATUS_LABEL_PREFIX}{lesson.status.value}"
 
-        if existing is None:
+        if lesson.id is None:
             self._repo.create_issue(
                 title=self._title(lesson),
                 body=self._body(lesson),
@@ -62,12 +52,12 @@ class GithubLessonRepository(LessonRepository):
                     *self._story_labels(lesson),
                 ],
             )
-        elif existing.id is not None:
-            issue = self._repo.issue(int(existing.id.value))
+        else:
+            issue = self._repo.issue(int(lesson.id.value))
             kept = [label.name for label in issue.labels if not self._is_mutable_label(label.name)]
             issue.set_labels(*kept, status_label, *self._conventions_labels(lesson))
-            if existing.is_open and not lesson.is_open:
-                self._repo.close_issue(int(existing.id.value))
+            if issue.state == "open" and not lesson.is_open:
+                self._repo.close_issue(int(lesson.id.value))
 
         self._repo.flush()
 
@@ -86,7 +76,12 @@ class GithubLessonRepository(LessonRepository):
 
         return [f"{_CONVENTIONS_PR_LABEL_PREFIX}{lesson.conventions_pull_request.value}"]
 
-    def search(self, status: LessonStatus | None = None, story_id: StoryId | None = None) -> list[Lesson]:
+    def search(
+        self,
+        status: LessonStatus | None = None,
+        story_id: StoryId | None = None,
+        source_pull_request: SourcePullRequest | None = None,
+    ) -> list[Lesson]:
         lessons = [self._to_lesson(issue) for issue in self._lesson_issues()]
 
         if status is not None:
@@ -94,6 +89,9 @@ class GithubLessonRepository(LessonRepository):
 
         if story_id is not None:
             lessons = [lesson for lesson in lessons if lesson.story_id == story_id]
+
+        if source_pull_request is not None:
+            lessons = [lesson for lesson in lessons if lesson.source_pull_request == source_pull_request]
 
         return lessons
 
@@ -114,6 +112,7 @@ class GithubLessonRepository(LessonRepository):
             comments=[],
             conventions_pull_request=self._conventions_pull_request_of(issue),
             open=issue.state == "open",
+            captured_at=issue.created_at,
         )
 
     def _conventions_pull_request_of(self, issue: Issue) -> ConventionsPullRequest | None:

@@ -14,6 +14,7 @@ from grooveloop.learning.application.tasks.refinement_task import RefinementTask
 from grooveloop.learning.domain.conventions_pull_request_status import ConventionsPullRequestStatus
 from grooveloop.learning.domain.events import LessonCaptured, LessonDiscarded, LessonLearned, LessonResolved
 from grooveloop.learning.domain.learn_signal import LearnSignal
+from grooveloop.learning.domain.lesson_comment_marker import LessonCommentMarker
 from grooveloop.learning.domain.lesson_repository import LessonRepository
 from grooveloop.learning.domain.refinement_result import RefinementResult
 from grooveloop.learning.infrastructure.detectors.lesson_captured_detector import LessonCapturedDetector
@@ -35,6 +36,7 @@ from grooveloop.learning.infrastructure.github_conventions_pull_request_status i
     GithubConventionsPullRequestStatus,
 )
 from grooveloop.learning.infrastructure.github_learn_signal import GithubLearnSignal
+from grooveloop.learning.infrastructure.github_lesson_comment_marker import GithubLessonCommentMarker
 from grooveloop.learning.infrastructure.github_lesson_repository import GithubLessonRepository
 from grooveloop.learning.infrastructure.github_refinement_result import GithubRefinementResult
 from grooveloop.shared.application.queries.pending_lessons import PendingLessonsQuery
@@ -42,6 +44,7 @@ from grooveloop.shared.application.queries.query_bus import QueryBus
 from grooveloop.shared.application.queries.uncaptured_lessons import UncapturedLessonsQuery
 from grooveloop.shared.domain.agent_profiles import AgentProfiles
 from grooveloop.shared.domain.agent_runner_registry import AgentRunnerRegistry
+from grooveloop.shared.domain.clock import Clock
 from grooveloop.shared.infrastructure.event_handler_binding import bind_event_handlers
 from grooveloop.shared.infrastructure.github_read_cache import GithubReadCache
 from grooveloop.shared.infrastructure.injector_lookup import resolve
@@ -80,6 +83,12 @@ class LearningModule(Module):
         return GithubLearnSignal(target_repository(github, target_repo, cache), cache)
 
     @provider
+    def lesson_comment_marker(
+        self, github: Github, target_repo: TargetRepo, cache: GithubReadCache
+    ) -> LessonCommentMarker:
+        return GithubLessonCommentMarker(target_repository(github, target_repo, cache), cache)
+
+    @provider
     def refinement_result(self, github: Github, target_repo: TargetRepo, cache: GithubReadCache) -> RefinementResult:
         return GithubRefinementResult(target_repository(github, target_repo, cache), cache)
 
@@ -90,12 +99,16 @@ class LearningModule(Module):
         agent_profiles: AgentProfiles,
         lesson_repository: LessonRepository,
         refinement_task: RefinementTask,
+        clock: Clock,
+        lesson_comment_marker: LessonCommentMarker,
     ) -> RefineConventionsCommandHandler:
         return RefineConventionsCommandHandler(
             agent_runner_registry=agent_runner_registry,
             agent_profiles=agent_profiles,
             lesson_repository=lesson_repository,
             refinement_task=refinement_task,
+            clock=clock,
+            lesson_comment_marker=lesson_comment_marker,
         )
 
     @provider

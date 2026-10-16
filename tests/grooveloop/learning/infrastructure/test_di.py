@@ -5,12 +5,14 @@ from github import Github
 from grooveloop.bootstrap import container
 from grooveloop.learning.domain.conventions_pull_request_status import ConventionsPullRequestStatus
 from grooveloop.learning.domain.learn_signal import LearnSignal
+from grooveloop.learning.domain.lesson_comment_marker import LessonCommentMarker
 from grooveloop.learning.domain.lesson_repository import LessonRepository
 from grooveloop.learning.domain.refinement_result import RefinementResult
 from grooveloop.learning.infrastructure.github_conventions_pull_request_status import (
     GithubConventionsPullRequestStatus,
 )
 from grooveloop.learning.infrastructure.github_learn_signal import GithubLearnSignal
+from grooveloop.learning.infrastructure.github_lesson_comment_marker import GithubLessonCommentMarker
 from grooveloop.learning.infrastructure.github_lesson_repository import GithubLessonRepository
 from grooveloop.learning.infrastructure.github_refinement_result import GithubRefinementResult
 from grooveloop.shared.infrastructure.target_repo import TargetRepo
@@ -25,9 +27,11 @@ class TestLearningModule:
             conventions_pull_request_status = container.get(ConventionsPullRequestStatus)
             learn_signal = container.get(LearnSignal)
             refinement_result = container.get(RefinementResult)
+            lesson_comment_marker = container.get(LessonCommentMarker)
 
         assert isinstance(lesson_repository, GithubLessonRepository)
         assert isinstance(conventions_pull_request_status, GithubConventionsPullRequestStatus)
         assert isinstance(learn_signal, GithubLearnSignal)
         assert isinstance(refinement_result, GithubRefinementResult)
+        assert isinstance(lesson_comment_marker, GithubLessonCommentMarker)
         github.get_repo.assert_called_once_with("owner/repo")

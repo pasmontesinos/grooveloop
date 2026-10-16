@@ -12,10 +12,14 @@ from grooveloop.shared.application.commands.command_handler import CommandHandle
 from grooveloop.shared.domain.agent_task_type import AgentTaskType
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from grooveloop.learning.application.tasks.refinement_task import RefinementTask
+    from grooveloop.learning.domain.lesson_comment_marker import LessonCommentMarker
     from grooveloop.learning.domain.lesson_repository import LessonRepository
     from grooveloop.shared.domain.agent_profiles import AgentProfiles
     from grooveloop.shared.domain.agent_runner_registry import AgentRunnerRegistry
+    from grooveloop.shared.domain.clock import Clock
 
 _SCRIBE_PROFILE = "scribe"
 
@@ -25,6 +29,8 @@ class RefineConventionsComment(TypedDict):
     path: str
     line: int
     diff_hunk: str
+    id: str | None
+    written_at: datetime
 
 
 @dataclass(frozen=True)
@@ -43,15 +49,20 @@ class RefineConventionsCommandHandler(CommandHandler[RefineConventionsCommand, N
         agent_profiles: AgentProfiles,
         lesson_repository: LessonRepository,
         refinement_task: RefinementTask,
+        clock: Clock,
+        lesson_comment_marker: LessonCommentMarker,
     ) -> None:
         self._agent_runner_registry = agent_runner_registry
         self._agent_profiles = agent_profiles
         self._lesson_repository = lesson_repository
         self._refinement_task = refinement_task
+        self._clock = clock
+        self._lesson_comment_marker = lesson_comment_marker
 
     def __call__(self, command: RefineConventionsCommand) -> None:
         source_pull_request = SourcePullRequest(command.source_pull_request)
-        if self._lesson_repository.find_by_source_pull_request(source_pull_request) is not None:
+        lessons = self._lesson_repository.search(source_pull_request=source_pull_request)
+        if any(lesson.is_in_progress() for lesson in lessons):
             return
 
         profile = self._agent_profiles.find(_SCRIBE_PROFILE)
@@ -69,4 +80,7 @@ class RefineConventionsCommandHandler(CommandHandler[RefineConventionsCommand, N
             model=profile.model,
         )
 
-        self._lesson_repository.save(Lesson.create(source_pull_request, StoryId(command.story_id), comments))
+        self._lesson_repository.save(
+            Lesson.create(source_pull_request, StoryId(command.story_id), comments, self._clock.now())
+        )
+        self._lesson_comment_marker.mark_captured(comments)
