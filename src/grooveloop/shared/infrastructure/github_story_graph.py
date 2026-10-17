@@ -211,6 +211,9 @@ class GithubStoryGraph:
     def nodes(self) -> list[IssueNode]:
         return self._cache.get_or_load(_GRAPH_KEY, self._load, _TTL_SECONDS)
 
+    def forget(self) -> None:
+        self._cache.invalidate(_GRAPH_KEY)
+
     def stories(self) -> list[StoryNodes]:
         nodes = self.nodes()
         slices: dict[str, list[IssueNode]] = {}
