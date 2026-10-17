@@ -71,16 +71,20 @@ class TestLessonCapturedDetector:
         assert [event.source_pull_request.value for event in events] == [7]
         assert signal.read == [7]
 
-    def test_emits_nothing_for_a_pull_request_learned_before_the_marks_without_new_learn_comments(self) -> None:
+    def test_emits_a_new_lesson_with_an_unmarked_learn_comment_written_before_the_previous_lesson(self) -> None:
         lesson = LessonMother.create(source_pull_request=42, status=LessonStatus.LEARNED, captured_at=_CAPTURE)
+        missed = _learn_comment("a", 8)
         detector = LessonCapturedDetector(
-            learn_signal=FakeLearnSignal({42: [_learn_comment("a", 8), _learn_comment("b", 9)]}),
+            learn_signal=FakeLearnSignal({42: [missed]}),
             lesson_repository=FakeLessonRepository(lessons=[lesson]),
         )
 
-        assert list(detector.detect()) == []
+        events = list(detector.detect())
 
-    def test_emits_a_new_lesson_with_only_the_learn_comments_written_after_the_capture(self) -> None:
+        assert [event.source_pull_request.value for event in events] == [42]
+        assert events[0].comments == [missed]
+
+    def test_emits_a_new_lesson_with_only_the_learn_comments_not_marked_by_the_loop(self) -> None:
         lesson = LessonMother.create(source_pull_request=42, status=LessonStatus.DISCARDED, captured_at=_CAPTURE)
         later = _learn_comment("c", 12)
         detector = LessonCapturedDetector(

@@ -1341,7 +1341,7 @@ class TestTick:
 
         assert repo.create_issue.call_count == 1
 
-    def test_should_capture_a_second_lesson_with_only_the_learn_comment_written_after_the_first(self) -> None:
+    def test_should_capture_a_second_lesson_with_only_the_learn_comment_not_marked_by_the_loop(self) -> None:
         story_issue = create_autospec(Issue, spec_set=True, instance=True)
         story_issue.number = 7
         story_issue.title = "feature"
@@ -1369,7 +1369,12 @@ class TestTick:
                     state="MERGED",
                     merged=True,
                     conversation=[
-                        conversation_comment("/grooveloop-learn already captured", day=2, node_id="IC_OLD"),
+                        conversation_comment(
+                            "/grooveloop-learn already captured",
+                            day=2,
+                            node_id="IC_OLD",
+                            reactions=[reaction_group("ROCKET")],
+                        ),
                         conversation_comment("/grooveloop-learn written after the capture", day=5, node_id="IC_NEW"),
                     ],
                 ),

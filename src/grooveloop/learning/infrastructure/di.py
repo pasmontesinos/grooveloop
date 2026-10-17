@@ -173,7 +173,5 @@ class LearningModule(Module):
         )
 
     @provider
-    def uncaptured_lessons_query_handler(
-        self, learn_signal: LearnSignal, lesson_repository: LessonRepository
-    ) -> UncapturedLessonsQueryHandler:
-        return UncapturedLessonsQueryHandler(learn_signal=learn_signal, lesson_repository=lesson_repository)
+    def uncaptured_lessons_query_handler(self, learn_signal: LearnSignal) -> UncapturedLessonsQueryHandler:
+        return UncapturedLessonsQueryHandler(learn_signal=learn_signal)

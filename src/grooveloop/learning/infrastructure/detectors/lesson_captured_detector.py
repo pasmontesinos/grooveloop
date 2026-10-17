@@ -23,7 +23,7 @@ class LessonCapturedDetector:
             if any(lesson.is_in_progress() for lesson in lessons):
                 continue
 
-            comments = uncaptured_comments(self._learn_signal.comments_of(source_pull_request), lessons)
+            comments = uncaptured_comments(self._learn_signal.comments_of(source_pull_request))
             if not comments:
                 continue
 
