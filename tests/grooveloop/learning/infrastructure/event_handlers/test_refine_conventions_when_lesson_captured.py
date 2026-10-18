@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from unittest.mock import create_autospec
 
@@ -42,7 +41,6 @@ class TestRefineConventionsWhenLessonCaptured:
                     line=10,
                     diff_hunk="@@ @@",
                     id="IC_1",
-                    written_at=datetime(2026, 1, 1, tzinfo=UTC),
                 ),
             ],
         )
@@ -64,7 +62,6 @@ class TestRefineConventionsWhenLessonCaptured:
                 "line": 10,
                 "diff_hunk": "@@ @@",
                 "id": "IC_1",
-                "written_at": datetime(2026, 1, 1, tzinfo=UTC),
             }
         ]
         assert command.workdir == "/tmp/wd"

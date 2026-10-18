@@ -62,7 +62,6 @@ class GithubLearnSignal(LearnSignal):
                 line=comment.line or 0,
                 diff_hunk=comment.diff_hunk or "",
                 id=comment.node_id,
-                written_at=comment.created_at,
                 captured=_CAPTURED_REACTION in comment.viewer_reactions,
             )
             for comment in pull.review
@@ -75,7 +74,6 @@ class GithubLearnSignal(LearnSignal):
                 line=0,
                 diff_hunk="",
                 id=comment.node_id,
-                written_at=comment.created_at,
                 captured=_CAPTURED_REACTION in comment.viewer_reactions,
             )
             for comment in pull.conversation

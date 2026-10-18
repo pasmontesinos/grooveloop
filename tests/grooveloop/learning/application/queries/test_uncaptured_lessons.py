@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from grooveloop.learning.application.queries.uncaptured_lessons import UncapturedLessonsQueryHandler
 from grooveloop.learning.domain.lesson_comment import LessonComment
 from grooveloop.shared.application.queries.uncaptured_lessons import UncapturedLessonsQuery
@@ -15,7 +13,6 @@ def _learn_comment(captured: bool = False) -> LessonComment:
         line=10,
         diff_hunk="@@ @@",
         id=None,
-        written_at=datetime(2026, 1, 1, tzinfo=UTC),
         captured=captured,
     )
 

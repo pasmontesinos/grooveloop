@@ -25,9 +25,7 @@ def _in_progress(
         source_pull_request=SourcePullRequest(number),
         story_id=story_id,
         status=LessonStatus.IN_PROGRESS,
-        comments=[
-            LessonComment(body="x", path="", line=0, diff_hunk="", id=None, written_at=datetime(2026, 1, 1, tzinfo=UTC))
-        ],
+        comments=[LessonComment(body="x", path="", line=0, diff_hunk="", id=None)],
         conventions_pull_request=None,
         open=True,
         captured_at=captured_at,

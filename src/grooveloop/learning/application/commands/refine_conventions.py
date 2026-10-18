@@ -12,8 +12,6 @@ from grooveloop.shared.application.commands.command_handler import CommandHandle
 from grooveloop.shared.domain.agent_task_type import AgentTaskType
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from grooveloop.learning.application.tasks.refinement_task import RefinementTask
     from grooveloop.learning.domain.lesson_comment_marker import LessonCommentMarker
     from grooveloop.learning.domain.lesson_repository import LessonRepository
@@ -30,7 +28,6 @@ class RefineConventionsComment(TypedDict):
     line: int
     diff_hunk: str
     id: str | None
-    written_at: datetime
 
 
 @dataclass(frozen=True)

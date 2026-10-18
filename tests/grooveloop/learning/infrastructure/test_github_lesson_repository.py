@@ -81,7 +81,6 @@ class TestGithubLessonRepository:
                     line=10,
                     diff_hunk="@@ @@",
                     id=None,
-                    written_at=datetime(2026, 1, 1, tzinfo=UTC),
                 ),
             ],
         )

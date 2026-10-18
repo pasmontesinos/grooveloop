@@ -19,7 +19,6 @@ def _comments() -> list[LessonComment]:
             line=10,
             diff_hunk="@@ @@",
             id=None,
-            written_at=datetime(2026, 1, 1, tzinfo=UTC),
         )
     ]
 
@@ -27,14 +26,13 @@ def _comments() -> list[LessonComment]:
 _CAPTURE = datetime(2026, 10, 16, 10, 0, tzinfo=UTC)
 
 
-def _learn_comment(id: str, hour: int, captured: bool = False) -> LessonComment:
+def _learn_comment(id: str, captured: bool = False) -> LessonComment:
     return LessonComment(
         body=f"/grooveloop-learn: {id}",
         path="",
         line=0,
         diff_hunk="",
         id=id,
-        written_at=datetime(2026, 10, 16, hour, 0, tzinfo=UTC),
         captured=captured,
     )
 
@@ -63,7 +61,7 @@ class TestLessonCapturedDetector:
 
     def test_does_not_read_the_comments_of_a_pull_request_with_a_lesson_in_progress(self) -> None:
         repository = FakeLessonRepository(lessons=[LessonMother.create(source_pull_request=42, captured_at=_CAPTURE)])
-        signal = FakeLearnSignal({42: [_learn_comment("a", 12)], 7: _comments()})
+        signal = FakeLearnSignal({42: [_learn_comment("a")], 7: _comments()})
         detector = LessonCapturedDetector(learn_signal=signal, lesson_repository=repository)
 
         events = list(detector.detect())
@@ -73,7 +71,7 @@ class TestLessonCapturedDetector:
 
     def test_emits_a_new_lesson_with_an_unmarked_learn_comment_written_before_the_previous_lesson(self) -> None:
         lesson = LessonMother.create(source_pull_request=42, status=LessonStatus.LEARNED, captured_at=_CAPTURE)
-        missed = _learn_comment("a", 8)
+        missed = _learn_comment("a")
         detector = LessonCapturedDetector(
             learn_signal=FakeLearnSignal({42: [missed]}),
             lesson_repository=FakeLessonRepository(lessons=[lesson]),
@@ -86,10 +84,10 @@ class TestLessonCapturedDetector:
 
     def test_emits_a_new_lesson_with_only_the_learn_comments_not_marked_by_the_loop(self) -> None:
         lesson = LessonMother.create(source_pull_request=42, status=LessonStatus.DISCARDED, captured_at=_CAPTURE)
-        later = _learn_comment("c", 12)
+        later = _learn_comment("c")
         detector = LessonCapturedDetector(
             learn_signal=FakeLearnSignal(
-                {42: [_learn_comment("a", 9, captured=True), _learn_comment("b", 11, captured=True), later]}
+                {42: [_learn_comment("a", captured=True), _learn_comment("b", captured=True), later]}
             ),
             lesson_repository=FakeLessonRepository(lessons=[lesson]),
         )

@@ -135,7 +135,7 @@ class TestGithubLearnSignal:
         assert comment.line == 7
         assert comment.diff_hunk == "@@ -1,2 +1,3 @@"
 
-    def test_reads_the_identity_and_the_writing_instant_of_each_learn_comment(self, repo: Mock) -> None:
+    def test_reads_the_identity_of_each_learn_comment(self, repo: Mock) -> None:
         wire_story_graph(
             repo,
             _story(),
@@ -145,8 +145,8 @@ class TestGithubLearnSignal:
                     42,
                     state="CLOSED",
                     merged=True,
-                    inline=[inline_comment("/grooveloop-learn: x", node_id="RC_1", day=3)],
-                    conversation=[conversation_comment("/grooveloop-learn: y", node_id="IC_1", day=4)],
+                    inline=[inline_comment("/grooveloop-learn: x", node_id="RC_1")],
+                    conversation=[conversation_comment("/grooveloop-learn: y", node_id="IC_1")],
                 ),
             ),
         )
@@ -154,10 +154,7 @@ class TestGithubLearnSignal:
 
         comments = signal.comments_of(SourcePullRequest(42))
 
-        assert [(comment.id, comment.written_at) for comment in comments] == [
-            ("RC_1", datetime(2026, 6, 3, tzinfo=UTC)),
-            ("IC_1", datetime(2026, 6, 4, tzinfo=UTC)),
-        ]
+        assert [comment.id for comment in comments] == ["RC_1", "IC_1"]
 
     def test_a_learn_comment_counts_as_captured_only_with_the_rocket_of_the_loop(self, repo: Mock) -> None:
         wire_story_graph(

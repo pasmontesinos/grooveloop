@@ -43,7 +43,6 @@ def _command() -> RefineConventionsCommand:
                 "line": 10,
                 "diff_hunk": "@@ -1 +1 @@\n-old\n+new",
                 "id": "IC_1",
-                "written_at": datetime(2026, 1, 1, tzinfo=UTC),
             },
             {
                 "body": "/grooveloop-learn: also name the fake FakeThing",
@@ -51,7 +50,6 @@ def _command() -> RefineConventionsCommand:
                 "line": 3,
                 "diff_hunk": "",
                 "id": "IC_2",
-                "written_at": datetime(2026, 1, 2, tzinfo=UTC),
             },
         ],
         workdir="/tmp/wd",

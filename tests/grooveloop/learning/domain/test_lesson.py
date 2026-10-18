@@ -22,7 +22,6 @@ _comments = st.lists(
         line=st.integers(min_value=0),
         diff_hunk=st.text(),
         id=st.none(),
-        written_at=st.datetimes(timezones=st.just(UTC)),
     ),
     min_size=1,
     max_size=5,
@@ -35,7 +34,7 @@ def _lesson_in_progress() -> Lesson:
     return Lesson.create(
         SourcePullRequest(42),
         StoryId("10"),
-        [LessonComment(body="x", path="", line=0, diff_hunk="", id=None, written_at=_CAPTURED_AT)],
+        [LessonComment(body="x", path="", line=0, diff_hunk="", id=None)],
         _CAPTURED_AT,
     )
 

@@ -30,7 +30,6 @@ class RefineConventionsWhenLessonCaptured(EventHandler[LessonCaptured]):
                         "line": comment.line,
                         "diff_hunk": comment.diff_hunk,
                         "id": comment.id,
-                        "written_at": comment.written_at,
                     }
                     for comment in event.comments
                 ],

@@ -33,11 +33,7 @@ class LessonMother:
             status=status,
             comments=comments
             if comments is not None
-            else [
-                LessonComment(
-                    body="x", path="", line=0, diff_hunk="", id=None, written_at=datetime(2026, 1, 1, tzinfo=UTC)
-                )
-            ],
+            else [LessonComment(body="x", path="", line=0, diff_hunk="", id=None)],
             conventions_pull_request=conventions_pull_request,
             open=open,
             captured_at=captured_at,

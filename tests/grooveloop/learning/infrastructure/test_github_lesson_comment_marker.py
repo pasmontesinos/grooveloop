@@ -37,7 +37,6 @@ def _learn_comment(node_id: str | None) -> LessonComment:
         line=0,
         diff_hunk="",
         id=node_id,
-        written_at=datetime(2026, 6, 2, tzinfo=UTC),
     )
 
 
