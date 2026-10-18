@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from grooveloop.learning.domain.lesson import Lesson
@@ -23,13 +24,17 @@ class LessonMother:
         comments: list[LessonComment] | None = None,
         conventions_pull_request: ConventionsPullRequest | None = None,
         open: bool = True,
+        captured_at: datetime = datetime(2026, 1, 1, tzinfo=UTC),
     ) -> Lesson:
         return Lesson(
             id=LessonId(lesson_id) if lesson_id is not None else None,
             source_pull_request=SourcePullRequest(source_pull_request),
             story_id=StoryId(story_id) if story_id is not None else None,
             status=status,
-            comments=comments if comments is not None else [LessonComment(body="x", path="", line=0, diff_hunk="")],
+            comments=comments
+            if comments is not None
+            else [LessonComment(body="x", path="", line=0, diff_hunk="", id=None)],
             conventions_pull_request=conventions_pull_request,
             open=open,
+            captured_at=captured_at,
         )

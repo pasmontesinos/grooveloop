@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from grooveloop.delivery.domain.directive_mark import DirectiveMark
 from grooveloop.delivery.domain.pull_request import PullRequest
 from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
 from grooveloop.delivery.domain.review_comment import ReviewComment
@@ -31,6 +32,24 @@ def _pull_request_with_an_implement_comment() -> PullRequest:
     )
 
     return PullRequest(number=PullRequestNumber(42), comments=[comment], last_commit_at=_BEFORE_THE_REVIEW)
+
+
+def _pull_request_with_a_no_changes_reply_after_a_taken_directive() -> PullRequest:
+    directive = ReviewComment(
+        body="/grooveloop-implement",
+        created_at=_BEFORE_THE_REVIEW,
+        directives=frozenset({CommentDirective.IMPLEMENT}),
+        marks=frozenset({DirectiveMark.TAKEN}),
+        taken_at=_REVIEWED_AT,
+    )
+
+    return PullRequest(
+        number=PullRequestNumber(42),
+        comments=[directive],
+        last_commit_at=_BEFORE_THE_REVIEW,
+        review_summary_at=_BEFORE_THE_REVIEW,
+        no_changes_reply_at=_AFTER_THE_REVIEW,
+    )
 
 
 class TestSliceReviewCompletion:
@@ -168,27 +187,38 @@ class TestSliceAddressingChanges:
         assert a_slice.awaits_requested_changes() is False
 
 
-class TestSliceCommitsAfterReview:
-    def test_should_have_commits_after_the_review_when_the_pull_request_has_them(self) -> None:
+class TestSliceCorrectionAfterReview:
+    def test_should_have_a_correction_after_the_review_when_the_pull_request_has_commits_after_it(self) -> None:
         a_slice = SliceMother.create(
             status=SliceStatus.CHANGES_REQUESTED,
             pull_request=_summarized_pull_request(last_commit_at=_AFTER_THE_REVIEW),
         )
 
-        assert a_slice.has_commits_after_review() is True
-        assert a_slice.lacks_commits_after_review() is False
+        assert a_slice.has_correction_after_review() is True
+        assert a_slice.lacks_correction_after_review() is False
 
-    def test_should_lack_commits_after_the_review_when_the_pull_request_has_none(self) -> None:
+    def test_should_lack_a_correction_after_the_review_when_the_pull_request_has_no_commits_after_it(self) -> None:
         a_slice = SliceMother.create(status=SliceStatus.CHANGES_REQUESTED, pull_request=_summarized_pull_request())
 
-        assert a_slice.has_commits_after_review() is False
-        assert a_slice.lacks_commits_after_review() is True
+        assert a_slice.has_correction_after_review() is False
+        assert a_slice.lacks_correction_after_review() is True
 
-    def test_should_neither_have_nor_lack_commits_after_the_review_without_a_pull_request(self) -> None:
+    def test_should_have_a_correction_after_the_review_with_a_no_changes_reply_to_a_taken_directive(self) -> None:
+        a_slice = SliceMother.create(
+            status=SliceStatus.CHANGES_REQUESTED,
+            pull_request=_pull_request_with_a_no_changes_reply_after_a_taken_directive(),
+        )
+
+        assert a_slice.has_correction_after_review() is True
+        assert a_slice.lacks_correction_after_review() is False
+        assert a_slice.declines_the_changes() is True
+
+    def test_should_neither_have_nor_lack_a_correction_after_the_review_without_a_pull_request(self) -> None:
         a_slice = SliceMother.create(status=SliceStatus.CHANGES_REQUESTED)
 
-        assert a_slice.has_commits_after_review() is False
-        assert a_slice.lacks_commits_after_review() is False
+        assert a_slice.has_correction_after_review() is False
+        assert a_slice.lacks_correction_after_review() is False
+        assert a_slice.declines_the_changes() is False
 
 
 class TestSliceReviewPhaseWithoutItsResult:
@@ -218,6 +248,15 @@ class TestSliceReviewPhaseWithoutItsResult:
         )
 
         assert a_slice.misses_verdict_or_correction() is False
+
+    def test_should_not_miss_the_correction_with_a_no_changes_reply_to_a_taken_directive(self) -> None:
+        a_slice = SliceMother.create(
+            status=SliceStatus.CHANGES_REQUESTED,
+            pull_request=_pull_request_with_a_no_changes_reply_after_a_taken_directive(),
+        )
+
+        assert a_slice.misses_verdict_or_correction() is False
+        assert a_slice.lacks_review_phase_artifact() is False
 
     @pytest.mark.parametrize("status", [SliceStatus.UNDER_REVIEW, SliceStatus.CHANGES_REQUESTED])
     def test_should_not_miss_anything_without_a_pull_request(self, status: SliceStatus) -> None:

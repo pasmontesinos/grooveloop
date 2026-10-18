@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from grooveloop.delivery.domain.directive_mark import DirectiveMark
 from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
 from grooveloop.delivery.domain.slice_id import SliceId
 from grooveloop.shared.application.commands.command import Command
@@ -11,6 +12,7 @@ from grooveloop.shared.domain.agent_task_type import AgentTaskType
 
 if TYPE_CHECKING:
     from grooveloop.delivery.application.tasks.review_task import ReviewTask
+    from grooveloop.delivery.domain.directive_marker import DirectiveMarker
     from grooveloop.delivery.domain.slice_repository import SliceRepository
     from grooveloop.shared.domain.agent_profiles import AgentProfiles
     from grooveloop.shared.domain.agent_runner_registry import AgentRunnerRegistry
@@ -34,11 +36,13 @@ class ReviewPullRequestCommandHandler(CommandHandler[ReviewPullRequestCommand, N
         agent_runner_registry: AgentRunnerRegistry,
         agent_profiles: AgentProfiles,
         review_task: ReviewTask,
+        directive_marker: DirectiveMarker,
     ) -> None:
         self._slice_repository = slice_repository
         self._agent_runner_registry = agent_runner_registry
         self._agent_profiles = agent_profiles
         self._review_task = review_task
+        self._directive_marker = directive_marker
 
     def __call__(self, command: ReviewPullRequestCommand) -> None:
         a_slice = self._slice_repository.find(SliceId(command.slice_id))
@@ -48,6 +52,9 @@ class ReviewPullRequestCommandHandler(CommandHandler[ReviewPullRequestCommand, N
         profile = self._agent_profiles.find(_REVIEWER_PROFILE)
         if profile is None:
             return
+
+        if a_slice.is_addressing_changes():
+            self._directive_marker.mark(a_slice.taken_directives(), DirectiveMark.ADDRESSED)
 
         if a_slice.pull_request is None:
             a_slice.anchor_pull_request(PullRequestNumber(command.pull_request_number))

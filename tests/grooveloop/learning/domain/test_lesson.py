@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -19,10 +21,22 @@ _comments = st.lists(
         path=st.text(),
         line=st.integers(min_value=0),
         diff_hunk=st.text(),
+        id=st.none(),
     ),
     min_size=1,
     max_size=5,
 )
+
+_CAPTURED_AT = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def _lesson_in_progress() -> Lesson:
+    return Lesson.create(
+        SourcePullRequest(42),
+        StoryId("10"),
+        [LessonComment(body="x", path="", line=0, diff_hunk="", id=None)],
+        _CAPTURED_AT,
+    )
 
 
 class TestLesson:
@@ -30,7 +44,7 @@ class TestLesson:
     def test_create_starts_in_progress_without_identity_aggregating_every_comment(
         self, number: int, comments: list[LessonComment]
     ) -> None:
-        lesson = Lesson.create(SourcePullRequest(number), StoryId("10"), comments)
+        lesson = Lesson.create(SourcePullRequest(number), StoryId("10"), comments, _CAPTURED_AT)
 
         assert lesson.id is None
         assert lesson.status == LessonStatus.IN_PROGRESS
@@ -38,11 +52,10 @@ class TestLesson:
         assert lesson.comments == comments
         assert lesson.conventions_pull_request is None
         assert lesson.is_open is True
+        assert lesson.captured_at == _CAPTURED_AT
 
     def test_learn_moves_to_learned_keeping_the_conventions_pull_request(self) -> None:
-        lesson = Lesson.create(
-            SourcePullRequest(42), StoryId("10"), [LessonComment(body="x", path="", line=0, diff_hunk="")]
-        )
+        lesson = _lesson_in_progress()
 
         lesson.learn(ConventionsPullRequest(99))
 
@@ -50,9 +63,7 @@ class TestLesson:
         assert lesson.conventions_pull_request == ConventionsPullRequest(99)
 
     def test_discard_moves_to_discarded_without_conventions_pull_request(self) -> None:
-        lesson = Lesson.create(
-            SourcePullRequest(42), StoryId("10"), [LessonComment(body="x", path="", line=0, diff_hunk="")]
-        )
+        lesson = _lesson_in_progress()
 
         lesson.discard()
 
@@ -60,18 +71,14 @@ class TestLesson:
         assert lesson.conventions_pull_request is None
 
     def test_learn_is_rejected_when_the_lesson_is_no_longer_in_progress(self) -> None:
-        lesson = Lesson.create(
-            SourcePullRequest(42), StoryId("10"), [LessonComment(body="x", path="", line=0, diff_hunk="")]
-        )
+        lesson = _lesson_in_progress()
         lesson.discard()
 
         with pytest.raises(IllegalLessonTransitionError):
             lesson.learn(ConventionsPullRequest(99))
 
     def test_discard_is_rejected_when_the_lesson_is_no_longer_in_progress(self) -> None:
-        lesson = Lesson.create(
-            SourcePullRequest(42), StoryId("10"), [LessonComment(body="x", path="", line=0, diff_hunk="")]
-        )
+        lesson = _lesson_in_progress()
         lesson.learn(ConventionsPullRequest(99))
 
         with pytest.raises(IllegalLessonTransitionError):

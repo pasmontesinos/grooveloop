@@ -21,9 +21,6 @@ class FakeLessonRepository(LessonRepository):
     def find(self, id: LessonId) -> Lesson | None:
         return next((lesson for lesson in self._lessons if lesson.id == id), None)
 
-    def find_by_source_pull_request(self, source_pull_request: SourcePullRequest) -> Lesson | None:
-        return next((lesson for lesson in self._lessons if lesson.source_pull_request == source_pull_request), None)
-
     def save(self, lesson: Lesson) -> None:
         stored = lesson
         if lesson.id is None:
@@ -35,6 +32,7 @@ class FakeLessonRepository(LessonRepository):
                 comments=lesson.comments,
                 conventions_pull_request=lesson.conventions_pull_request,
                 open=lesson.is_open,
+                captured_at=lesson.captured_at,
             )
             self._next_number += 1
 
@@ -42,9 +40,16 @@ class FakeLessonRepository(LessonRepository):
         self._lessons.append(stored)
         self.saved.append(stored)
 
-    def search(self, status: LessonStatus | None = None, story_id: StoryId | None = None) -> list[Lesson]:
+    def search(
+        self,
+        status: LessonStatus | None = None,
+        story_id: StoryId | None = None,
+        source_pull_request: SourcePullRequest | None = None,
+    ) -> list[Lesson]:
         return [
             lesson
             for lesson in self._lessons
-            if (status is None or lesson.status == status) and (story_id is None or lesson.story_id == story_id)
+            if (status is None or lesson.status == status)
+            and (story_id is None or lesson.story_id == story_id)
+            and (source_pull_request is None or lesson.source_pull_request == source_pull_request)
         ]

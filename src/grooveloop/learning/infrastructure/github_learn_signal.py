@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from grooveloop.shared.infrastructure.github_read_cache import GithubReadCache
     from grooveloop.shared.infrastructure.github_story_graph import PullRequestNode
 
+_CAPTURED_REACTION = "ROCKET"
+
 
 @dataclass(frozen=True)
 class _Source:
@@ -59,12 +61,21 @@ class GithubLearnSignal(LearnSignal):
                 path=comment.path or "",
                 line=comment.line or 0,
                 diff_hunk=comment.diff_hunk or "",
+                id=comment.node_id,
+                captured=_CAPTURED_REACTION in comment.viewer_reactions,
             )
             for comment in pull.review
             if _requests_learning(comment.body)
         ]
         conversation = [
-            LessonComment(body=comment.body, path="", line=0, diff_hunk="")
+            LessonComment(
+                body=comment.body,
+                path="",
+                line=0,
+                diff_hunk="",
+                id=comment.node_id,
+                captured=_CAPTURED_REACTION in comment.viewer_reactions,
+            )
             for comment in pull.conversation
             if _requests_learning(comment.body)
         ]

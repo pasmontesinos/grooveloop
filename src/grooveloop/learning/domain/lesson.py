@@ -6,6 +6,8 @@ from grooveloop.learning.domain.exceptions import IllegalLessonTransitionError
 from grooveloop.learning.domain.lesson_status import LessonStatus
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from grooveloop.learning.domain.conventions_pull_request import ConventionsPullRequest
     from grooveloop.learning.domain.lesson_comment import LessonComment
     from grooveloop.learning.domain.lesson_id import LessonId
@@ -23,6 +25,7 @@ class Lesson:
         comments: list[LessonComment],
         conventions_pull_request: ConventionsPullRequest | None,
         open: bool,
+        captured_at: datetime,
     ) -> None:
         self._id = id
         self._source_pull_request = source_pull_request
@@ -31,9 +34,16 @@ class Lesson:
         self._comments = comments
         self._conventions_pull_request = conventions_pull_request
         self._open = open
+        self._captured_at = captured_at
 
     @classmethod
-    def create(cls, source_pull_request: SourcePullRequest, story_id: StoryId, comments: list[LessonComment]) -> Self:
+    def create(
+        cls,
+        source_pull_request: SourcePullRequest,
+        story_id: StoryId,
+        comments: list[LessonComment],
+        captured_at: datetime,
+    ) -> Self:
         return cls(
             id=None,
             source_pull_request=source_pull_request,
@@ -42,6 +52,7 @@ class Lesson:
             comments=comments,
             conventions_pull_request=None,
             open=True,
+            captured_at=captured_at,
         )
 
     @property
@@ -71,6 +82,13 @@ class Lesson:
     @property
     def is_open(self) -> bool:
         return self._open
+
+    @property
+    def captured_at(self) -> datetime:
+        return self._captured_at
+
+    def is_in_progress(self) -> bool:
+        return self._status is LessonStatus.IN_PROGRESS
 
     def is_resolved(self, conventions_pull_request_open: bool) -> bool:
         if self._status is LessonStatus.DISCARDED:

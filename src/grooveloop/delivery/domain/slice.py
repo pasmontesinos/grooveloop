@@ -10,6 +10,7 @@ from grooveloop.shared.domain.agent_run_cause import AgentRunCause
 
 if TYPE_CHECKING:
     from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
+    from grooveloop.delivery.domain.review_comment import ReviewComment
     from grooveloop.delivery.domain.slice_id import SliceId
     from grooveloop.delivery.domain.story_id import StoryId
     from grooveloop.shared.domain.agent_run import AgentRun
@@ -221,11 +222,23 @@ class Slice:
 
         return self._pull_request.has_unaddressed_comments()
 
-    def has_commits_after_review(self) -> bool:
-        return self._pull_request is not None and self._pull_request.has_commits_after_review()
+    def pending_directives(self) -> list[ReviewComment]:
+        return self._pull_request.pending_directives() if self._pull_request is not None else []
 
-    def lacks_commits_after_review(self) -> bool:
-        return self._pull_request is not None and not self._pull_request.has_commits_after_review()
+    def addressed_directives_without_mark(self) -> list[ReviewComment]:
+        return self._pull_request.addressed_directives_without_mark() if self._pull_request is not None else []
+
+    def taken_directives(self) -> list[ReviewComment]:
+        return self._pull_request.taken_directives() if self._pull_request is not None else []
+
+    def has_correction_after_review(self) -> bool:
+        return self._pull_request is not None and self._pull_request.has_a_correction_after_review()
+
+    def lacks_correction_after_review(self) -> bool:
+        return self._pull_request is not None and not self._pull_request.has_a_correction_after_review()
+
+    def declines_the_changes(self) -> bool:
+        return self._pull_request is not None and self._pull_request.declines_the_changes()
 
     def is_auto_mergeable(self) -> bool:
         if self._status is not SliceStatus.PR_OPEN:
@@ -241,7 +254,7 @@ class Slice:
             return self._review_verdict is ReviewVerdict.EMPTY and not self._has_a_fresh_review_summary()
 
         if self.is_addressing_changes():
-            return self.lacks_commits_after_review()
+            return self.lacks_correction_after_review()
 
         return False
 
@@ -253,7 +266,7 @@ class Slice:
             return self._review_verdict is ReviewVerdict.EMPTY
 
         if self.is_addressing_changes():
-            return self.lacks_commits_after_review()
+            return self.lacks_correction_after_review()
 
         return False
 

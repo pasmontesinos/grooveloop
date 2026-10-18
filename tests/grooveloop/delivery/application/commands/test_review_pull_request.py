@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from grooveloop.delivery.application.commands.review_pull_request import (
@@ -8,8 +9,10 @@ from grooveloop.delivery.application.commands.review_pull_request import (
 )
 from grooveloop.delivery.application.tasks.review_task import ReviewTask
 from grooveloop.delivery.application.tasks.story_journal_section import StoryJournalSection
+from grooveloop.delivery.domain.directive_mark import DirectiveMark
 from grooveloop.delivery.domain.pull_request import PullRequest
 from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
+from grooveloop.delivery.domain.review_comment import ReviewComment
 from grooveloop.delivery.domain.review_verdict import ReviewVerdict
 from grooveloop.delivery.domain.slice_id import SliceId
 from grooveloop.delivery.domain.slice_status import SliceStatus
@@ -21,10 +24,12 @@ from grooveloop.shared.application.queries.read_journal_entries import (
 )
 from grooveloop.shared.domain.agent_profile import AgentProfile
 from grooveloop.shared.domain.agent_task_type import AgentTaskType
+from grooveloop.shared.domain.comment_directive import CommentDirective
 from tests.grooveloop.delivery.mothers.slice_mother import SliceMother
 from tests.playground.shared.infrastructure.fake_agent_profiles import FakeAgentProfiles
 from tests.playground.shared.infrastructure.fake_agent_runner import FakeAgentRunner
 from tests.playground.shared.infrastructure.fake_agent_runner_registry import FakeAgentRunnerRegistry
+from tests.playground.shared.infrastructure.fake_directive_marker import FakeDirectiveMarker
 from tests.playground.shared.infrastructure.fake_query_bus import FakeQueryBus
 from tests.playground.shared.infrastructure.fake_slice_repository import FakeSliceRepository
 
@@ -77,6 +82,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -106,6 +112,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -136,6 +143,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -164,6 +172,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -189,6 +198,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -214,6 +224,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -241,6 +252,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -271,6 +283,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -299,6 +312,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -327,6 +341,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=registry,
             agent_profiles=FakeAgentProfiles([_reviewer(engine="opencode")]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -353,6 +368,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles(),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -371,6 +387,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -387,6 +404,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="99", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -401,6 +419,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -418,6 +437,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -436,6 +456,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=42, workdir="/tmp/wd", repo="owner/repo"))
@@ -450,6 +471,7 @@ class TestReviewPullRequestCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -480,6 +502,7 @@ class TestReviewPullRequestCommandHandlerJournal:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -506,6 +529,7 @@ class TestReviewPullRequestCommandHandlerJournal:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -543,6 +567,7 @@ class TestReviewPullRequestCommandHandlerJournal:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(query_bus)),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(
@@ -577,6 +602,7 @@ class TestReviewPullRequestCommandHandlerJournal:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(
@@ -608,6 +634,7 @@ class TestReviewPullRequestCommandHandlerJournal:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(
@@ -648,6 +675,7 @@ class TestReviewPullRequestCommandHandlerJournal:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(query_bus)),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
@@ -677,6 +705,7 @@ class TestReviewPullRequestCommandHandlerJournal:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_reviewer()]),
             review_task=ReviewTask(StoryJournalSection(query_bus)),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(
@@ -689,3 +718,107 @@ class TestReviewPullRequestCommandHandlerJournal:
         assert "grooveloop note" not in instruction
         assert "## Story journal" not in instruction
         assert query_bus.asked == []
+
+
+def _directive(day: int, marks: frozenset[DirectiveMark] = frozenset()) -> ReviewComment:
+    return ReviewComment(
+        body=f"/grooveloop-implement: change number {day}",
+        created_at=datetime(2026, 6, day, tzinfo=UTC),
+        directives=frozenset({CommentDirective.IMPLEMENT}),
+        id=f"comment-{day}",
+        marks=marks,
+    )
+
+
+class TestReviewPullRequestCommandHandlerDirectiveMarks:
+    def _handler(self, a_slice: Slice, marker: FakeDirectiveMarker) -> ReviewPullRequestCommandHandler:
+        return ReviewPullRequestCommandHandler(
+            slice_repository=FakeSliceRepository({StoryId("10"): [a_slice]}),
+            agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
+            agent_profiles=FakeAgentProfiles([_reviewer()]),
+            review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=marker,
+        )
+
+    def test_marks_the_taken_directives_as_addressed_when_the_correction_goes_back_to_the_reviewer(self) -> None:
+        taken = frozenset({DirectiveMark.TAKEN})
+        addressed = frozenset({DirectiveMark.TAKEN, DirectiveMark.ADDRESSED})
+        marker = FakeDirectiveMarker()
+        a_slice = SliceMother.create(
+            slice_id="12",
+            status=SliceStatus.CHANGES_REQUESTED,
+            pull_request=PullRequest(
+                number=PullRequestNumber(99),
+                comments=[_directive(2, addressed), _directive(3, taken), _directive(5)],
+                last_commit_at=datetime(2026, 6, 4, tzinfo=UTC),
+            ),
+        )
+
+        self._handler(a_slice, marker)(
+            ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo")
+        )
+
+        assert marker.marked[DirectiveMark.ADDRESSED] == [_directive(3, taken)]
+        assert marker.marked[DirectiveMark.TAKEN] == []
+
+    def test_marks_no_directive_on_the_first_review_of_the_pull_request(self) -> None:
+        marker = FakeDirectiveMarker()
+        a_slice = SliceMother.create(slice_id="12", status=SliceStatus.DISPATCHED)
+
+        self._handler(a_slice, marker)(
+            ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo")
+        )
+
+        assert marker.calls == []
+
+
+class TestReviewPullRequestCommandHandlerCorrectionWithoutChanges:
+    def _slice_declining_a_taken_directive(self) -> Slice:
+        taken = ReviewComment(
+            body="/grooveloop-implement rename it",
+            created_at=datetime(2026, 6, 3, tzinfo=UTC),
+            directives=frozenset({CommentDirective.IMPLEMENT}),
+            marks=frozenset({DirectiveMark.TAKEN}),
+            taken_at=datetime(2026, 6, 4, tzinfo=UTC),
+        )
+
+        return SliceMother.create(
+            slice_id="12",
+            status=SliceStatus.CHANGES_REQUESTED,
+            title="implement the SliceRepository",
+            pull_request=PullRequest(
+                number=PullRequestNumber(99),
+                comments=[taken],
+                last_commit_at=datetime(2026, 6, 2, tzinfo=UTC),
+                no_changes_reply_at=datetime(2026, 6, 5, tzinfo=UTC),
+            ),
+        )
+
+    def test_tells_the_reviewer_that_the_developer_declined_to_change_code(self) -> None:
+        agent_runner = FakeAgentRunner()
+        handler = ReviewPullRequestCommandHandler(
+            slice_repository=FakeSliceRepository({StoryId("10"): [self._slice_declining_a_taken_directive()]}),
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_reviewer()]),
+            review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
+        )
+
+        handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
+
+        assert "declined to change code" in agent_runner.last_instruction
+        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_instruction
+
+    def test_does_not_mention_a_declined_correction_when_the_developer_pushed_commits(self) -> None:
+        agent_runner = FakeAgentRunner()
+        handler = ReviewPullRequestCommandHandler(
+            slice_repository=FakeSliceRepository({StoryId("10"): [_corrected_slice()]}),
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_reviewer()]),
+            review_task=ReviewTask(StoryJournalSection(_query_bus())),
+            directive_marker=FakeDirectiveMarker(),
+        )
+
+        handler(ReviewPullRequestCommand(slice_id="12", pull_request_number=99, workdir="/tmp/wd", repo="owner/repo"))
+
+        assert "declined to change code" not in agent_runner.last_instruction

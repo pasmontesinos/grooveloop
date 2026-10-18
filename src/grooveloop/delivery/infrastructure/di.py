@@ -58,6 +58,7 @@ from grooveloop.delivery.application.tasks.implementation_task import Implementa
 from grooveloop.delivery.application.tasks.review_task import ReviewTask
 from grooveloop.delivery.application.tasks.story_journal_section import StoryJournalSection
 from grooveloop.delivery.domain.agent_session_repository import AgentSessionRepository
+from grooveloop.delivery.domain.directive_marker import DirectiveMarker
 from grooveloop.delivery.domain.events import (
     AgentRunAbandoned,
     AgentRunFailed,
@@ -183,6 +184,7 @@ from grooveloop.delivery.infrastructure.event_handlers.review_pull_request_when_
     ReviewPullRequestWhenReReviewRequired,
 )
 from grooveloop.delivery.infrastructure.github_delivery_labels import GithubDeliveryLabels
+from grooveloop.delivery.infrastructure.github_directive_marker import GithubDirectiveMarker
 from grooveloop.delivery.infrastructure.github_pull_request_merger import GithubPullRequestMerger
 from grooveloop.delivery.infrastructure.github_pull_request_merger_probe import GithubPullRequestMergerProbe
 from grooveloop.delivery.infrastructure.github_slice_labels import GithubSliceLabels
@@ -253,6 +255,10 @@ class DeliveryModule(Module):
     @provider
     def slice_labels(self, github: Github, target_repo: TargetRepo, cache: GithubReadCache) -> SliceLabels:
         return GithubSliceLabels(target_repository(github, target_repo, cache))
+
+    @provider
+    def directive_marker(self, github: Github, target_repo: TargetRepo, cache: GithubReadCache) -> DirectiveMarker:
+        return GithubDirectiveMarker(target_repository(github, target_repo, cache), cache)
 
     @provider
     def agent_session_repository(
@@ -340,12 +346,14 @@ class DeliveryModule(Module):
         agent_runner_registry: AgentRunnerRegistry,
         agent_profiles: AgentProfiles,
         review_task: ReviewTask,
+        directive_marker: DirectiveMarker,
     ) -> ReviewPullRequestCommandHandler:
         return ReviewPullRequestCommandHandler(
             slice_repository=slice_repository,
             agent_runner_registry=agent_runner_registry,
             agent_profiles=agent_profiles,
             review_task=review_task,
+            directive_marker=directive_marker,
         )
 
     @provider
@@ -415,12 +423,14 @@ class DeliveryModule(Module):
         agent_runner_registry: AgentRunnerRegistry,
         agent_profiles: AgentProfiles,
         addressing_task: AddressingTask,
+        directive_marker: DirectiveMarker,
     ) -> AddressReviewChangesCommandHandler:
         return AddressReviewChangesCommandHandler(
             slice_repository=slice_repository,
             agent_runner_registry=agent_runner_registry,
             agent_profiles=agent_profiles,
             addressing_task=addressing_task,
+            directive_marker=directive_marker,
         )
 
     @provider

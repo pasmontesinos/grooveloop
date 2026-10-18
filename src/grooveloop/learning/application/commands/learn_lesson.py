@@ -24,10 +24,13 @@ class LearnLessonCommandHandler(CommandHandler[LearnLessonCommand, None]):
         self._lesson_repository = lesson_repository
 
     def __call__(self, command: LearnLessonCommand) -> None:
-        lesson = self._lesson_repository.find_by_source_pull_request(SourcePullRequest(command.source_pull_request))
-        if lesson is None or lesson.status is not LessonStatus.IN_PROGRESS:
+        lessons = self._lesson_repository.search(
+            status=LessonStatus.IN_PROGRESS, source_pull_request=SourcePullRequest(command.source_pull_request)
+        )
+        if not lessons:
             return
 
+        lesson = lessons[0]
         lesson.learn(ConventionsPullRequest(command.conventions_pull_request))
 
         self._lesson_repository.save(lesson)

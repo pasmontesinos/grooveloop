@@ -23,7 +23,7 @@ class ReviewChangesUnaddressedDetector:
             run_id = a_slice.agent_run_id
             if (
                 run_id is not None
-                and a_slice.lacks_commits_after_review()
+                and a_slice.lacks_correction_after_review()
                 and self._agent_runner.outcome_of(run_id) is AgentOutcome.FAILED
             ):
                 yield ReviewChangesUnaddressed(slice_id=a_slice.id)

@@ -40,6 +40,7 @@ class TestRefineConventionsWhenLessonCaptured:
                     path="src/x.py",
                     line=10,
                     diff_hunk="@@ @@",
+                    id="IC_1",
                 ),
             ],
         )
@@ -60,6 +61,7 @@ class TestRefineConventionsWhenLessonCaptured:
                 "path": "src/x.py",
                 "line": 10,
                 "diff_hunk": "@@ @@",
+                "id": "IC_1",
             }
         ]
         assert command.workdir == "/tmp/wd"

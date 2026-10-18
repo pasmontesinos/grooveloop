@@ -16,6 +16,7 @@ from tests.playground.shared.infrastructure.github_slice_graph import (
     conversation_comment,
     inline_comment,
     pr_node,
+    reaction_group,
     slice_node,
     wire_story_graph,
 )
@@ -133,6 +134,63 @@ class TestGithubLearnSignal:
         assert comment.path == "src/a.py"
         assert comment.line == 7
         assert comment.diff_hunk == "@@ -1,2 +1,3 @@"
+
+    def test_reads_the_identity_of_each_learn_comment(self, repo: Mock) -> None:
+        wire_story_graph(
+            repo,
+            _story(),
+            _slice_with(
+                11,
+                pr_node(
+                    42,
+                    state="CLOSED",
+                    merged=True,
+                    inline=[inline_comment("/grooveloop-learn: x", node_id="RC_1")],
+                    conversation=[conversation_comment("/grooveloop-learn: y", node_id="IC_1")],
+                ),
+            ),
+        )
+        signal = GithubLearnSignal(repo, _cache())
+
+        comments = signal.comments_of(SourcePullRequest(42))
+
+        assert [comment.id for comment in comments] == ["RC_1", "IC_1"]
+
+    def test_a_learn_comment_counts_as_captured_only_with_the_rocket_of_the_loop(self, repo: Mock) -> None:
+        wire_story_graph(
+            repo,
+            _story(),
+            _slice_with(
+                11,
+                pr_node(
+                    42,
+                    state="CLOSED",
+                    merged=True,
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-learn: a", node_id="IC_1", reactions=[reaction_group("ROCKET")]
+                        ),
+                        conversation_comment(
+                            "/grooveloop-learn: b", node_id="IC_2", reactions=[reaction_group("EYES")]
+                        ),
+                        conversation_comment(
+                            "/grooveloop-learn: c",
+                            node_id="IC_3",
+                            reactions=[reaction_group("ROCKET", viewer_has_reacted=False)],
+                        ),
+                    ],
+                ),
+            ),
+        )
+        signal = GithubLearnSignal(repo, _cache())
+
+        comments = signal.comments_of(SourcePullRequest(42))
+
+        assert [(comment.id, comment.captured) for comment in comments] == [
+            ("IC_1", True),
+            ("IC_2", False),
+            ("IC_3", False),
+        ]
 
     def test_resolves_the_story_of_the_sub_issue_the_pull_request_closes(self, repo: Mock) -> None:
         wire_story_graph(

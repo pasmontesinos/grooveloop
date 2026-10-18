@@ -8,6 +8,7 @@ from grooveloop.delivery.application.commands.address_review_changes import (
     AddressReviewChangesCommandHandler,
 )
 from grooveloop.delivery.application.tasks.addressing_task import AddressingTask
+from grooveloop.delivery.domain.directive_mark import DirectiveMark
 from grooveloop.delivery.domain.pull_request import PullRequest
 from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
 from grooveloop.delivery.domain.review_comment import ReviewComment
@@ -21,6 +22,7 @@ from tests.grooveloop.delivery.mothers.slice_mother import SliceMother
 from tests.playground.shared.infrastructure.fake_agent_profiles import FakeAgentProfiles
 from tests.playground.shared.infrastructure.fake_agent_runner import FakeAgentRunner
 from tests.playground.shared.infrastructure.fake_agent_runner_registry import FakeAgentRunnerRegistry
+from tests.playground.shared.infrastructure.fake_directive_marker import FakeDirectiveMarker
 from tests.playground.shared.infrastructure.fake_slice_repository import FakeSliceRepository
 
 if TYPE_CHECKING:
@@ -163,6 +165,29 @@ def _under_review_slice() -> Slice:
     )
 
 
+def _directive(day: int, marks: frozenset[DirectiveMark] = frozenset()) -> ReviewComment:
+    return ReviewComment(
+        body=f"/grooveloop-implement: change number {day}",
+        created_at=datetime(2026, 6, day, tzinfo=UTC),
+        directives=frozenset({CommentDirective.IMPLEMENT}),
+        id=f"comment-{day}",
+        marks=marks,
+    )
+
+
+def _pr_open_slice_with(comments: list[ReviewComment], last_commit_day: int | None = None) -> Slice:
+    return SliceMother.create(
+        slice_id="12",
+        status=SliceStatus.PR_OPEN,
+        title="implement the SliceRepository",
+        pull_request=PullRequest(
+            number=PullRequestNumber(42),
+            comments=comments,
+            last_commit_at=datetime(2026, 6, last_commit_day, tzinfo=UTC) if last_commit_day is not None else None,
+        ),
+    )
+
+
 def _automatic_command() -> AddressReviewChangesCommand:
     return AddressReviewChangesCommand(
         slice_id="12", workdir="/tmp/wd", repo="owner/repo", automatic=True, max_review_rounds=1
@@ -178,6 +203,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -197,6 +223,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -216,6 +243,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -230,6 +258,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -245,6 +274,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -260,6 +290,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -274,6 +305,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer(model="sonnet")]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -289,6 +321,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=registry,
             agent_profiles=FakeAgentProfiles([_developer(engine="opencode")]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -304,6 +337,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles(),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -320,6 +354,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -335,6 +370,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -351,6 +387,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -365,6 +402,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -382,6 +420,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -397,6 +436,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -414,6 +454,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -432,6 +473,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(_automatic_command())
@@ -449,6 +491,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(_automatic_command())
@@ -467,6 +510,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(_automatic_command())
@@ -484,12 +528,46 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(_automatic_command())
 
         assert "automatic reviewer" in agent_runner.last_instruction
         assert "Request changes" not in agent_runner.last_instruction
+
+    def test_lets_the_developer_address_a_human_directive_with_a_marked_reply_instead_of_commits(self) -> None:
+        repository = FakeSliceRepository({StoryId("10"): [_pr_open_slice()]})
+        agent_runner = FakeAgentRunner()
+        handler = AddressReviewChangesCommandHandler(
+            slice_repository=repository,
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_developer()]),
+            addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
+        )
+
+        handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
+
+        assert "`gh pr comment 42`" in agent_runner.last_instruction
+        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_instruction
+
+    def test_lets_the_developer_rebut_a_blocking_verdict_with_a_marked_reply_instead_of_commits(self) -> None:
+        repository = FakeSliceRepository({StoryId("10"): [_under_review_slice()]})
+        agent_runner = FakeAgentRunner()
+        handler = AddressReviewChangesCommandHandler(
+            slice_repository=repository,
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_developer()]),
+            addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
+        )
+
+        handler(_automatic_command())
+
+        assert "rebut" in agent_runner.last_instruction
+        assert "`gh pr comment 42`" in agent_runner.last_instruction
+        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_instruction
 
     def test_consumes_no_review_round_when_the_human_asks_for_the_correction(self) -> None:
         repository = FakeSliceRepository({StoryId("10"): [_blocked_slice()]})
@@ -498,6 +576,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -515,6 +594,7 @@ class TestAddressReviewChangesCommandHandler:
             agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
             agent_profiles=FakeAgentProfiles([_developer()]),
             addressing_task=AddressingTask(),
+            directive_marker=FakeDirectiveMarker(),
         )
 
         handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
@@ -522,3 +602,55 @@ class TestAddressReviewChangesCommandHandler:
         result = repository.find(SliceId("12"))
         assert result is not None
         assert result.review_rounds == 0
+
+
+class TestAddressReviewChangesCommandHandlerDirectiveMarks:
+    def _handler(self, a_slice: Slice, marker: FakeDirectiveMarker) -> AddressReviewChangesCommandHandler:
+        return AddressReviewChangesCommandHandler(
+            slice_repository=FakeSliceRepository({StoryId("10"): [a_slice]}),
+            agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
+            agent_profiles=FakeAgentProfiles([_developer()]),
+            addressing_task=AddressingTask(),
+            directive_marker=marker,
+        )
+
+    def test_marks_every_pending_directive_as_taken_when_the_human_asks_for_the_correction(self) -> None:
+        taken = frozenset({DirectiveMark.TAKEN})
+        addressed = frozenset({DirectiveMark.TAKEN, DirectiveMark.ADDRESSED})
+        marker = FakeDirectiveMarker()
+        handler = self._handler(
+            _pr_open_slice_with([_directive(2, addressed), _directive(3, taken), _directive(4)], last_commit_day=5),
+            marker,
+        )
+
+        handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
+
+        assert marker.marked[DirectiveMark.TAKEN] == [_directive(3, taken), _directive(4)]
+        assert marker.marked[DirectiveMark.ADDRESSED] == []
+
+    def test_marks_as_addressed_the_directives_the_commits_addressed_before_the_pull_request_had_marks(self) -> None:
+        marker = FakeDirectiveMarker()
+        handler = self._handler(_pr_open_slice_with([_directive(2), _directive(4)], last_commit_day=3), marker)
+
+        handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
+
+        assert marker.marked[DirectiveMark.ADDRESSED] == [_directive(2)]
+        assert marker.marked[DirectiveMark.TAKEN] == [_directive(4)]
+        assert marker.calls == [DirectiveMark.ADDRESSED, DirectiveMark.TAKEN]
+
+    def test_marks_no_directive_when_the_correction_is_automatic(self) -> None:
+        marker = FakeDirectiveMarker()
+        handler = self._handler(_under_review_slice(), marker)
+
+        handler(_automatic_command())
+
+        assert marker.calls == []
+
+    def test_marks_no_directive_when_the_slice_is_not_addressable(self) -> None:
+        marker = FakeDirectiveMarker()
+        a_slice = SliceMother.create(slice_id="12", status=SliceStatus.MERGED)
+        handler = self._handler(a_slice, marker)
+
+        handler(AddressReviewChangesCommand(slice_id="12", workdir="/tmp/wd", repo="owner/repo"))
+
+        assert marker.calls == []

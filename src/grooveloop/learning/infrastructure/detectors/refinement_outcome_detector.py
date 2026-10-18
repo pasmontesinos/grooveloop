@@ -24,7 +24,7 @@ class RefinementOutcomeDetector:
             if story_id is None:
                 continue
 
-            outcome = self._refinement_result.of(lesson.source_pull_request)
+            outcome = self._refinement_result.of(lesson.source_pull_request, lesson.captured_at)
             if outcome is None:
                 continue
 
