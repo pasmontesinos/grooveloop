@@ -1,6 +1,6 @@
 [project]
 name = "grooveloop"
-version = "0.1.0"
+version = "0.1.1"
 description = "CLI orchestrator that drives the software delivery cycle by delegating each step to coding agents"
 readme = "README.md"
 license = "Apache-2.0"
