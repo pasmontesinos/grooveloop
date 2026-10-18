@@ -92,9 +92,9 @@ Bounded contexts are split **per delivery process** (see [ADR-0005](../adr/0005-
 | Context | Process | Aggregates and ports |
 |---|---|---|
 | `slicing` | Spec → sub-issues, with order and dependencies; closes the Story once every slice is merged and no verification or lesson of the Story is pending. | `Story` (+`Spec`, + the `Slice` it materializes); `StoryRepository`. |
-| `delivery` | Drives each slice: agent → PR → automatic review → corrections → merge. Closes abandoned runs and sweeps finished worktrees. | `Slice` (+`PullRequest`); `SliceRepository`, `SliceLabels`, `PullRequestMerger`; query port `AgentSessionRepository`. |
+| `delivery` | Drives each slice: agent → PR → automatic review → corrections → merge. Closes abandoned runs and sweeps finished worktrees. | `Slice` (+`PullRequest`); `SliceRepository`, `SliceLabels`, `PullRequestMerger`, `DirectiveMarker`; query port `AgentSessionRepository`. |
 | `verification` | After the merge of a slice labeled `verify-deploy`, the verifier agent checks the deploy and the increment. | `SliceVerification`; `SliceVerificationRepository`, `MergedSliceSignal`. |
-| `learning` | The `/grooveloop-learn` comments of a merged PR become a lesson; the scribe agent turns it into a conventions PR. | `Lesson`; `LessonRepository`, `LearnSignal`, `RefinementResult`, `ConventionsPullRequestStatus`. |
+| `learning` | The `/grooveloop-learn` comments of a merged PR become a lesson, one per capture of the comments not captured yet; the scribe agent turns it into a conventions PR. | `Lesson`; `LessonRepository`, `LearnSignal`, `LessonCommentMarker`, `RefinementResult`, `ConventionsPullRequestStatus`. |
 | `journal` | The Story journal that agents and humans write with `note` and read with `journal`. | `JournalEntry`; `JournalEntryRepository`, `AgentRunContextRepository`. |
 | `shared` | Common base (below). | — |
 

@@ -52,6 +52,8 @@ from tests.playground.shared.infrastructure.github_slice_graph import (
     graph_reads,
     inline_comment,
     pr_node,
+    reaction_group,
+    reactions_added,
     slice_node,
     wire_slice_graph,
 )
@@ -174,6 +176,36 @@ def _under_review_slice_with_a_blocking_verdict(*extra_labels: str) -> tuple[Any
             "review:blocking",
             *extra_labels,
             pull_request=pr_node(42, conversation=[conversation_comment("<!-- grooveloop:review -->\nsummary")]),
+        ),
+    )
+    github = create_autospec(Github, spec_set=True, instance=True)
+    github.get_repo.return_value = repo
+
+    return github, sub_issue
+
+
+def _slice_with_a_rebutted_blocking_verdict(status: str, *conversation: Any) -> tuple[Any, Any]:
+    story_issue = create_autospec(Issue, spec_set=True, instance=True)
+    story_issue.body = ""
+    story_issue.labels = []
+    labels = ("story:7", status, "pr:42", "review:blocking", "review-round:1")
+    sub_issue = _sub_issue(12, *labels)
+    repo = create_autospec(Repository, spec_set=True, instance=True)
+    repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+    wire_slice_graph(
+        repo,
+        slice_node(
+            12,
+            *labels,
+            pull_request=pr_node(
+                42,
+                conversation=[
+                    conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                    conversation_comment("The finding does not apply\n\n<!-- grooveloop:no-changes -->", day=3),
+                    *conversation,
+                ],
+                commit_dates=["2026-06-01T00:00:00Z"],
+            ),
         ),
     )
     github = create_autospec(Github, spec_set=True, instance=True)
@@ -400,6 +432,7 @@ class TestTick:
         assert agent_runner.last_workdir == "/tmp/wd"
         labels_set = sub_issue.set_labels.call_args.args
         assert "changes_requested" in labels_set
+        assert reactions_added(repo) == [("inline-555", "EYES")]
 
     def test_should_fail_a_changes_requested_slice_when_the_agent_finished_without_pushing(self) -> None:
         story_issue = create_autospec(Issue, spec_set=True, instance=True)
@@ -1308,6 +1341,63 @@ class TestTick:
 
         assert repo.create_issue.call_count == 1
 
+    def test_should_capture_a_second_lesson_with_only_the_learn_comment_not_marked_by_the_loop(self) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.number = 7
+        story_issue.title = "feature"
+        story_issue.body = "## Slices\n### First\n"
+        story_issue.labels = [_label("grooveloop"), _label("sliced")]
+        story_issue.pull_request = None
+        first = _sub_issue(12, "story:7", "merged", "pr:40")
+        lesson_issue = _sub_issue(500, "grooveloop", "lesson", "source_pr:40", "story:7", "learning:discarded")
+        lesson_issue.state = "closed"
+        lesson_issue.created_at = datetime(2026, 6, 3, tzinfo=UTC)
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: first, 500: lesson_issue}.__getitem__
+        repo.get_issues.side_effect = lambda *args, **kwargs: [lesson_issue]
+        wire_slice_graph(
+            repo,
+            slice_node(7, "grooveloop", "sliced", title="feature", body=story_issue.body),
+            slice_node(
+                12,
+                "story:7",
+                "merged",
+                "pr:40",
+                state="CLOSED",
+                pull_request=pr_node(
+                    40,
+                    state="MERGED",
+                    merged=True,
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-learn already captured",
+                            day=2,
+                            node_id="IC_OLD",
+                            reactions=[reaction_group("ROCKET")],
+                        ),
+                        conversation_comment("/grooveloop-learn written after the capture", day=5, node_id="IC_NEW"),
+                    ],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, FakeAgentRunner()),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(FakeAgentRunner())),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            tick.run("acme/sample", "/tmp/wd")
+
+        repo.create_issue.assert_called_once()
+        body = repo.create_issue.call_args.kwargs["body"]
+        assert "written after the capture" in body
+        assert "already captured" not in body
+        assert "source_pr:40" in repo.create_issue.call_args.kwargs["labels"]
+        assert reactions_added(repo) == [("IC_NEW", "ROCKET")]
+
     def test_should_read_github_again_on_the_tick_that_follows_another_tick(self) -> None:
         lesson_issue = _sub_issue(500, "grooveloop", "lesson", "source_pr:42", "story:7", "learning:in_progress")
         lesson_issue.state = "open"
@@ -1369,6 +1459,407 @@ class TestTick:
         assert agent_runner.last_task_type == AgentTaskType.REVIEW_SLICE
         labels_set = sub_issue.set_labels.call_args.args
         assert "under_review" in labels_set
+
+    def test_should_mark_as_addressed_only_the_taken_directive_when_the_correction_goes_back_to_the_reviewer(
+        self,
+    ) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        sub_issue = _sub_issue(12, "story:7", "changes_requested", "pr:42")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "story:7",
+                "changes_requested",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-implement: use the SliceRepository port",
+                            day=2,
+                            reactions=[reaction_group("EYES")],
+                        ),
+                        conversation_comment("/grooveloop-implement: and rename it", day=4),
+                    ],
+                    commit_dates=["2026-06-03T00:00:00Z"],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.last_task_type == AgentTaskType.REVIEW_SLICE
+        assert "under_review" in sub_issue.set_labels.call_args.args
+        assert reactions_added(repo) == [("conversation-2", "ROCKET")]
+
+    def test_should_not_send_back_to_the_reviewer_a_correction_whose_directive_was_taken_after_the_last_commit(
+        self,
+    ) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        sub_issue = _sub_issue(12, "story:7", "changes_requested", "pr:42")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "story:7",
+                "changes_requested",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-implement: use the SliceRepository port",
+                            day=2,
+                            reactions=[
+                                reaction_group("EYES", reacted_at="2026-06-03T00:00:00Z"),
+                                reaction_group("ROCKET"),
+                            ],
+                        ),
+                        conversation_comment(
+                            "/grooveloop-implement: and rename it",
+                            day=4,
+                            reactions=[reaction_group("EYES", reacted_at="2026-06-07T00:00:00Z")],
+                        ),
+                        conversation_comment("<!-- grooveloop:review -->\nsummary", day=5),
+                    ],
+                    commit_dates=["2026-06-06T00:00:00Z"],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 0
+        assert reactions_added(repo) == []
+
+    def test_should_take_again_a_re_opened_directive_without_sending_its_correction_back_to_the_reviewer(
+        self,
+    ) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        node = slice_node(
+            12,
+            "story:7",
+            "pr_open",
+            "pr:42",
+            pull_request=pr_node(
+                42,
+                conversation=[
+                    conversation_comment(
+                        "/grooveloop-implement: use the SliceRepository port",
+                        day=1,
+                        reactions=[reaction_group("EYES", reacted_at="2026-06-02T00:00:00Z")],
+                    ),
+                    conversation_comment("<!-- grooveloop:review -->\nsummary", day=4),
+                ],
+                commit_dates=["2026-06-06T00:00:00Z"],
+            ),
+        )
+        sub_issue = _mutable_sub_issue(12, node, "story:7", "pr_open", "pr:42")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(repo, node)
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 1
+        assert agent_runner.last_task_type == AgentTaskType.ADDRESS_REVIEW
+        assert "changes_requested" in sub_issue.set_labels.call_args.args
+        assert reactions_added(repo) == [("conversation-1", "EYES")]
+
+    def test_should_send_back_to_the_reviewer_a_correction_that_declines_the_changes_with_a_marked_reply(
+        self,
+    ) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        sub_issue = _sub_issue(12, "story:7", "changes_requested", "pr:42")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "story:7",
+                "changes_requested",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                        conversation_comment(
+                            "/grooveloop-implement: use the SliceRepository port",
+                            day=3,
+                            reactions=[reaction_group("EYES", reacted_at="2026-06-03T00:00:00Z")],
+                        ),
+                        conversation_comment("The port is already used\n\n<!-- grooveloop:no-changes -->", day=4),
+                    ],
+                    commit_dates=["2026-06-01T00:00:00Z"],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.last_task_type == AgentTaskType.REVIEW_SLICE
+        assert "declined to change code" in agent_runner.last_instruction
+        assert "under_review" in sub_issue.set_labels.call_args.args
+        assert reactions_added(repo) == [("conversation-3", "ROCKET")]
+
+    def test_should_keep_under_review_a_declined_correction_until_its_new_summary_appears(self) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        sub_issue = _sub_issue(12, "story:7", "under_review", "pr:42")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "story:7",
+                "under_review",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                        conversation_comment(
+                            "/grooveloop-implement: use the SliceRepository port",
+                            day=3,
+                            reactions=[reaction_group("EYES"), reaction_group("ROCKET")],
+                        ),
+                        conversation_comment("The port is already used\n\n<!-- grooveloop:no-changes -->", day=4),
+                    ],
+                    commit_dates=["2026-06-01T00:00:00Z"],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 0
+        sub_issue.set_labels.assert_not_called()
+
+    def test_should_open_for_the_human_an_approved_declined_correction_without_another_correction(self) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        node = slice_node(
+            12,
+            "story:7",
+            "under_review",
+            "pr:42",
+            "review:approve",
+            pull_request=pr_node(
+                42,
+                conversation=[
+                    conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                    conversation_comment(
+                        "/grooveloop-implement: use the SliceRepository port",
+                        day=3,
+                        reactions=[reaction_group("EYES"), reaction_group("ROCKET")],
+                    ),
+                    conversation_comment("The port is already used\n\n<!-- grooveloop:no-changes -->", day=4),
+                    conversation_comment("The reason holds\n\n<!-- grooveloop:review -->", day=5),
+                ],
+                commit_dates=["2026-06-01T00:00:00Z"],
+            ),
+        )
+        sub_issue = _mutable_sub_issue(12, node, "story:7", "under_review", "pr:42", "review:approve")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(repo, node)
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd")
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 0
+        assert "pr_open" in sub_issue.set_labels.call_args.args
+        assert reactions_added(repo) == []
+
+    def test_should_correct_a_blocking_verdict_whose_summary_quotes_the_declined_reply(self) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.body = ""
+        story_issue.labels = []
+        sub_issue = _sub_issue(12, "story:7", "under_review", "pr:42", "review:blocking")
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: sub_issue}.__getitem__
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "story:7",
+                "under_review",
+                "pr:42",
+                "review:blocking",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment("<!-- grooveloop:review -->\nsummary", day=2),
+                        conversation_comment(
+                            "/grooveloop-implement: use the SliceRepository port",
+                            day=3,
+                            reactions=[reaction_group("EYES"), reaction_group("ROCKET")],
+                        ),
+                        conversation_comment("The port is already used\n\n<!-- grooveloop:no-changes -->", day=4),
+                        conversation_comment(
+                            "The reply that ends with `<!-- grooveloop:no-changes -->` does not hold\n\n"
+                            "<!-- grooveloop:review -->",
+                            day=5,
+                        ),
+                    ],
+                    commit_dates=["2026-06-01T00:00:00Z"],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd", max_review_rounds=1)
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 1
+        assert "changes_requested" in sub_issue.set_labels.call_args.args
+
+    def test_should_send_back_to_the_reviewer_a_blocking_verdict_rebutted_with_a_marked_reply(self) -> None:
+        github, sub_issue = _slice_with_a_rebutted_blocking_verdict("changes_requested")
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd", max_review_rounds=2)
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 1
+        assert agent_runner.last_task_type == AgentTaskType.REVIEW_SLICE
+        assert "declined to change code" in agent_runner.last_instruction
+        assert "findings of the previous review" in agent_runner.last_instruction
+        labels_set = sub_issue.set_labels.call_args.args
+        assert "under_review" in labels_set
+        assert "review-round:1" in labels_set
+
+    def test_should_spend_a_round_on_a_new_blocking_verdict_of_a_rebutted_correction(self) -> None:
+        github, sub_issue = _slice_with_a_rebutted_blocking_verdict(
+            "under_review", conversation_comment("The finding still applies\n\n<!-- grooveloop:review -->", day=4)
+        )
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd", max_review_rounds=2)
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 1
+        labels_set = sub_issue.set_labels.call_args.args
+        assert "changes_requested" in labels_set
+        assert "review-round:2" in labels_set
+
+    def test_should_leave_to_the_human_a_new_blocking_verdict_of_a_rebutted_correction_without_rounds_left(
+        self,
+    ) -> None:
+        github, sub_issue = _slice_with_a_rebutted_blocking_verdict(
+            "under_review", conversation_comment("The finding still applies\n\n<!-- grooveloop:review -->", day=4)
+        )
+        agent_runner = FakeAgentRunner()
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, agent_runner),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(agent_runner)),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            exit_code = tick.run("acme/sample", "/tmp/wd", max_review_rounds=1)
+
+        assert exit_code == 0
+        assert agent_runner.dispatched_count == 0
+        labels_set = sub_issue.set_labels.call_args.args
+        assert "pr_open" in labels_set
+        assert "review-round:1" in labels_set
 
     def test_should_sweep_the_workspace_of_a_finished_run(self) -> None:
         repo = create_autospec(Repository, spec_set=True, instance=True)

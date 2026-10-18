@@ -1,18 +1,27 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from unittest.mock import create_autospec
+
 from grooveloop.learning.application.commands.refine_conventions import (
     RefineConventionsCommand,
     RefineConventionsCommandHandler,
 )
 from grooveloop.learning.application.tasks.refinement_task import RefinementTask
+from grooveloop.learning.domain.lesson_comment_marker import LessonCommentMarker
 from grooveloop.learning.domain.lesson_status import LessonStatus
+from grooveloop.learning.domain.source_pull_request import SourcePullRequest
 from grooveloop.learning.domain.story_id import StoryId
 from grooveloop.shared.domain.agent_profile import AgentProfile
 from grooveloop.shared.domain.agent_task_type import AgentTaskType
+from tests.grooveloop.learning.mothers.lesson_mother import LessonMother
+from tests.playground.shared.infrastructure.clock import clock_at
 from tests.playground.shared.infrastructure.fake_agent_profiles import FakeAgentProfiles
 from tests.playground.shared.infrastructure.fake_agent_runner import FakeAgentRunner
 from tests.playground.shared.infrastructure.fake_agent_runner_registry import FakeAgentRunnerRegistry
 from tests.playground.shared.infrastructure.fake_lesson_repository import FakeLessonRepository
+
+_NOW = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
 
 
 def _scribe(
@@ -33,12 +42,14 @@ def _command() -> RefineConventionsCommand:
                 "path": "src/x.py",
                 "line": 10,
                 "diff_hunk": "@@ -1 +1 @@\n-old\n+new",
+                "id": "IC_1",
             },
             {
                 "body": "/grooveloop-learn: also name the fake FakeThing",
                 "path": "src/y.py",
                 "line": 3,
                 "diff_hunk": "",
+                "id": "IC_2",
             },
         ],
         workdir="/tmp/wd",
@@ -54,6 +65,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles([_scribe()]),
             lesson_repository=FakeLessonRepository(),
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
 
         handler(_command())
@@ -71,6 +84,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles([_scribe()]),
             lesson_repository=FakeLessonRepository(),
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
 
         handler(_command())
@@ -87,6 +102,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles([_scribe()]),
             lesson_repository=FakeLessonRepository(),
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
 
         handler(_command())
@@ -101,6 +118,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles([_scribe()]),
             lesson_repository=FakeLessonRepository(),
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
 
         handler(_command())
@@ -116,6 +135,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles([_scribe()]),
             lesson_repository=FakeLessonRepository(),
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
 
         handler(_command())
@@ -134,6 +155,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles([_scribe()]),
             lesson_repository=lesson_repository,
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
 
         handler(_command())
@@ -144,6 +167,7 @@ class TestRefineConventionsCommandHandler:
         assert saved.story_id == StoryId("277")
         assert saved.status == LessonStatus.IN_PROGRESS
         assert len(saved.comments) == 2
+        assert saved.captured_at == _NOW
 
     def test_dispatches_with_the_runner_of_the_profile_engine(self) -> None:
         agent_runner = FakeAgentRunner()
@@ -153,6 +177,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles([_scribe(engine="opencode")]),
             lesson_repository=FakeLessonRepository(),
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
 
         handler(_command())
@@ -168,6 +194,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles(),
             lesson_repository=lesson_repository,
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
 
         handler(_command())
@@ -175,7 +203,7 @@ class TestRefineConventionsCommandHandler:
         assert agent_runner.dispatched_count == 0
         assert lesson_repository.saved == []
 
-    def test_does_not_dispatch_or_save_again_when_the_lesson_already_exists(self) -> None:
+    def test_does_not_dispatch_or_save_again_while_the_pull_request_has_a_lesson_in_progress(self) -> None:
         agent_runner = FakeAgentRunner()
         lesson_repository = FakeLessonRepository()
         handler = RefineConventionsCommandHandler(
@@ -183,6 +211,8 @@ class TestRefineConventionsCommandHandler:
             agent_profiles=FakeAgentProfiles([_scribe()]),
             lesson_repository=lesson_repository,
             refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
         )
         handler(_command())
 
@@ -190,3 +220,55 @@ class TestRefineConventionsCommandHandler:
 
         assert agent_runner.dispatched_count == 1
         assert len(lesson_repository.saved) == 1
+
+    def test_captures_a_new_lesson_for_a_pull_request_whose_previous_lesson_is_resolved(self) -> None:
+        agent_runner = FakeAgentRunner()
+        previous = LessonMother.create(lesson_id="400", source_pull_request=42, status=LessonStatus.LEARNED)
+        lesson_repository = FakeLessonRepository(lessons=[previous])
+        handler = RefineConventionsCommandHandler(
+            agent_runner_registry=FakeAgentRunnerRegistry(agent_runner),
+            agent_profiles=FakeAgentProfiles([_scribe()]),
+            lesson_repository=lesson_repository,
+            refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=create_autospec(LessonCommentMarker, spec_set=True, instance=True),
+        )
+
+        handler(_command())
+
+        assert agent_runner.dispatched_count == 1
+        assert [lesson.status for lesson in lesson_repository.search(source_pull_request=SourcePullRequest(42))] == [
+            LessonStatus.LEARNED,
+            LessonStatus.IN_PROGRESS,
+        ]
+
+    def test_marks_as_captured_every_learn_comment_the_lesson_includes(self) -> None:
+        marker = create_autospec(LessonCommentMarker, spec_set=True, instance=True)
+        handler = RefineConventionsCommandHandler(
+            agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
+            agent_profiles=FakeAgentProfiles([_scribe()]),
+            lesson_repository=FakeLessonRepository(),
+            refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=marker,
+        )
+
+        handler(_command())
+
+        marker.mark_captured.assert_called_once()
+        assert [comment.id for comment in marker.mark_captured.call_args.args[0]] == ["IC_1", "IC_2"]
+
+    def test_marks_nothing_when_the_scribe_profile_is_missing(self) -> None:
+        marker = create_autospec(LessonCommentMarker, spec_set=True, instance=True)
+        handler = RefineConventionsCommandHandler(
+            agent_runner_registry=FakeAgentRunnerRegistry(FakeAgentRunner()),
+            agent_profiles=FakeAgentProfiles(),
+            lesson_repository=FakeLessonRepository(),
+            refinement_task=RefinementTask(),
+            clock=clock_at(_NOW),
+            lesson_comment_marker=marker,
+        )
+
+        handler(_command())
+
+        marker.mark_captured.assert_not_called()

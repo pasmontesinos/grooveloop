@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from grooveloop.delivery.domain.pull_request import PullRequest
@@ -11,6 +12,12 @@ from grooveloop.delivery.domain.slice_id import SliceId
 from grooveloop.delivery.domain.slice_repository import SliceRepository
 from grooveloop.delivery.domain.slice_status import SliceStatus
 from grooveloop.delivery.domain.story_id import StoryId
+from grooveloop.delivery.infrastructure.github_directive_reactions import (
+    TAKEN_AT_QUERY,
+    marks_of,
+    taken_at_key,
+    taken_at_of,
+)
 from grooveloop.delivery.infrastructure.github_review_round_labels import (
     REVIEW_ROUND_LABEL_PREFIX,
     review_rounds_of,
@@ -48,6 +55,7 @@ _RETRY_LABEL_PREFIX = "retry:"
 _FAILURE_LABEL_PREFIX = "failure:"
 _STATUS_VALUES = {status.value for status in SliceStatus}
 _REVIEW_SUMMARY_MARKER = "<!-- grooveloop:review -->"
+_NO_CHANGES_MARKER = "<!-- grooveloop:no-changes -->"
 _TTL_SECONDS = 300
 _ISSUE_KEY_PREFIX = "issues:slice-graph:issue:"
 
@@ -189,12 +197,16 @@ class GithubSliceRepository(SliceRepository):
             last_commit_at=pull.last_commit_at,
             merged=pull.merged,
             closed=pull.closed,
-            review_summary_at=self._review_summary_at(pull),
+            review_summary_at=self._latest_marked_at(pull, _REVIEW_SUMMARY_MARKER),
+            no_changes_reply_at=self._latest_ending_with_at(pull, _NO_CHANGES_MARKER),
         )
 
-    def _review_summary_at(self, pull: PullRequestNode) -> datetime | None:
+    def _latest_marked_at(self, pull: PullRequestNode, marker: str) -> datetime | None:
+        return max((comment.created_at for comment in pull.conversation if marker in comment.body), default=None)
+
+    def _latest_ending_with_at(self, pull: PullRequestNode, marker: str) -> datetime | None:
         return max(
-            (comment.created_at for comment in pull.conversation if _REVIEW_SUMMARY_MARKER in comment.body),
+            (comment.created_at for comment in pull.conversation if comment.body.rstrip().endswith(marker)),
             default=None,
         )
 
@@ -202,7 +214,19 @@ class GithubSliceRepository(SliceRepository):
         inline = [self._inline_comment(comment) for comment in pull.review]
         conversation = [self._conversation_comment(comment) for comment in pull.conversation]
 
-        return inline + conversation
+        return [self._with_taken_at(comment) for comment in inline + conversation]
+
+    def _with_taken_at(self, comment: ReviewComment) -> ReviewComment:
+        if comment.id is None or not comment.requests_implementation() or not comment.is_taken():
+            return comment
+
+        return replace(comment, taken_at=self._taken_at(comment.id))
+
+    def _taken_at(self, comment_id: str) -> datetime | None:
+        def load() -> datetime | None:
+            return taken_at_of(self._graphql.query(TAKEN_AT_QUERY, {"id": comment_id}))
+
+        return self._cache.get_or_load(taken_at_key(comment_id), load, _TTL_SECONDS)
 
     def _inline_comment(self, comment: CommentNode) -> ReviewComment:
         root_id = comment.reply_to_id if comment.reply_to_id is not None else comment.database_id
@@ -214,11 +238,17 @@ class GithubSliceRepository(SliceRepository):
             line=comment.line,
             thread_id=str(root_id),
             directives=parse_comment_directives(comment.body),
+            id=comment.node_id,
+            marks=marks_of(comment.viewer_reactions),
         )
 
     def _conversation_comment(self, comment: CommentNode) -> ReviewComment:
         return ReviewComment(
-            body=comment.body, created_at=comment.created_at, directives=parse_comment_directives(comment.body)
+            body=comment.body,
+            created_at=comment.created_at,
+            directives=parse_comment_directives(comment.body),
+            id=comment.node_id,
+            marks=marks_of(comment.viewer_reactions),
         )
 
     def _status_from(self, node: IssueNode) -> SliceStatus:

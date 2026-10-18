@@ -9,6 +9,7 @@ from github.Issue import Issue
 from github.Label import Label
 from github.Repository import Repository
 
+from grooveloop.delivery.domain.directive_mark import DirectiveMark
 from grooveloop.delivery.domain.pull_request_number import PullRequestNumber
 from grooveloop.delivery.domain.review_comment import ReviewComment
 from grooveloop.delivery.domain.review_verdict import ReviewVerdict
@@ -28,6 +29,7 @@ from tests.playground.shared.infrastructure.github_slice_graph import (
     graph_reads,
     inline_comment,
     pr_node,
+    reaction_group,
     slice_node,
     wire_slice_graph,
 )
@@ -601,8 +603,97 @@ class TestGithubSliceRepositoryPullRequest:
                 line=10,
                 thread_id="555",
                 created_at=datetime(2026, 6, 2, tzinfo=UTC),
+                id="inline-555",
             )
         ]
+
+    def test_find_reads_the_reactions_of_the_viewer_as_the_marks_of_each_comment(self, repo: Mock) -> None:
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "pr_open",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    inline=[
+                        inline_comment(
+                            "/grooveloop-implement: use the port",
+                            node_id="PRRC_1",
+                            reactions=[reaction_group("EYES"), reaction_group("ROCKET")],
+                        )
+                    ],
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-implement: rename the variable",
+                            day=3,
+                            node_id="IC_1",
+                            reactions=[
+                                reaction_group("EYES"),
+                                reaction_group("ROCKET", viewer_has_reacted=False),
+                                reaction_group("HEART"),
+                            ],
+                        )
+                    ],
+                ),
+            ),
+        )
+        adapter = GithubSliceRepository(repo, _cache())
+
+        a_slice = adapter.find(SliceId("12"))
+
+        assert a_slice is not None
+        assert a_slice.pull_request is not None
+        inline, conversation = a_slice.pull_request.comments
+        assert inline.id == "PRRC_1"
+        assert inline.marks == {DirectiveMark.TAKEN, DirectiveMark.ADDRESSED}
+        assert conversation.id == "IC_1"
+        assert conversation.marks == {DirectiveMark.TAKEN}
+
+    def test_find_reads_when_the_viewer_took_each_directive_still_without_the_addressed_mark(self, repo: Mock) -> None:
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "changes_requested",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-implement: rename the variable",
+                            day=3,
+                            node_id="IC_1",
+                            reactions=[
+                                reaction_group(
+                                    "EYES",
+                                    reacted_at="2026-06-05T00:00:00Z",
+                                    others_reacted_at=["2026-06-07T00:00:00Z"],
+                                )
+                            ],
+                        ),
+                        conversation_comment(
+                            "/grooveloop-implement: and test it",
+                            day=4,
+                            node_id="IC_2",
+                            reactions=[
+                                reaction_group("EYES", reacted_at="2026-06-06T00:00:00Z"),
+                                reaction_group("ROCKET"),
+                            ],
+                        ),
+                    ],
+                ),
+            ),
+        )
+        adapter = GithubSliceRepository(repo, _cache())
+
+        a_slice = adapter.find(SliceId("12"))
+
+        assert a_slice is not None
+        assert a_slice.pull_request is not None
+        taken, addressed = a_slice.pull_request.comments
+        assert taken.taken_at == datetime(2026, 6, 5, tzinfo=UTC)
+        assert addressed.taken_at is None
 
     def test_find_reads_conversation_comments_as_context_with_their_directive(self, repo: Mock) -> None:
         wire_slice_graph(
@@ -794,6 +885,64 @@ class TestGithubSliceRepositoryPullRequest:
         assert a_slice.pull_request is not None
         assert a_slice.pull_request.has_a_fresh_review_summary() is True
         assert a_slice.pull_request.has_commits_after_review() is False
+
+    def test_hydrates_the_no_changes_reply_as_the_last_change_of_the_pull_request(self, repo: Mock) -> None:
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "under_review",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment("Verdict: would request changes\n\n<!-- grooveloop:review -->", day=4),
+                        conversation_comment(
+                            "Nothing to change: the port exists\n\n<!-- grooveloop:no-changes -->", day=5
+                        ),
+                    ],
+                    commit_dates=["2026-06-03T00:00:00Z"],
+                ),
+            ),
+        )
+        adapter = GithubSliceRepository(repo, _cache())
+
+        a_slice = adapter.find(SliceId("12"))
+
+        assert a_slice is not None
+        assert a_slice.pull_request is not None
+        assert a_slice.pull_request.has_a_fresh_review_summary() is False
+
+    def test_does_not_hydrate_as_the_no_changes_reply_a_review_summary_that_quotes_its_marker(self, repo: Mock) -> None:
+        wire_slice_graph(
+            repo,
+            slice_node(
+                12,
+                "under_review",
+                "pr:42",
+                pull_request=pr_node(
+                    42,
+                    conversation=[
+                        conversation_comment(
+                            "Nothing to change: the port exists\n\n<!-- grooveloop:no-changes -->", day=4
+                        ),
+                        conversation_comment(
+                            "The reply that ends with `<!-- grooveloop:no-changes -->` does not hold\n\n"
+                            "<!-- grooveloop:review -->",
+                            day=5,
+                        ),
+                    ],
+                    commit_dates=["2026-06-03T00:00:00Z"],
+                ),
+            ),
+        )
+        adapter = GithubSliceRepository(repo, _cache())
+
+        a_slice = adapter.find(SliceId("12"))
+
+        assert a_slice is not None
+        assert a_slice.pull_request is not None
+        assert a_slice.pull_request.has_a_fresh_review_summary() is True
 
     def test_does_not_hydrate_the_review_summary_without_the_marker(self, repo: Mock) -> None:
         wire_slice_graph(

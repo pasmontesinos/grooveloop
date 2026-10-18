@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _THREAD_COMMENTS_MARKER = "PullRequestReviewThread"
 _PULL_THREADS_MARKER = "reviewThreads(first: $page"
@@ -11,6 +14,10 @@ _ISSUES_MARKER = "issues("
 _PULL_REQUEST_MARKER = "pullRequest(number: $number)"
 _LABELED_PULLS_MARKER = "pullRequests("
 _STORY_PULLS_MARKER = "$labels"
+_ADD_REACTION_MARKER = "addReaction"
+_REMOVE_REACTION_MARKER = "removeReaction"
+_REACTED_AT = "2026-07-01T00:00:00Z"
+_REACTIONS_MARKER = "... on Reactable"
 
 
 def slice_node(
@@ -100,8 +107,12 @@ def inline_comment(
     reply_to: int | None = None,
     diff_hunk: str = "@@ @@",
     author: str | None = "octocat",
+    node_id: str | None = None,
+    reactions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
+        "id": node_id if node_id is not None else f"inline-{database_id}",
+        "reactionGroups": reactions or [],
         "databaseId": database_id,
         "author": _author(author),
         "body": body,
@@ -113,8 +124,33 @@ def inline_comment(
     }
 
 
-def conversation_comment(body: str, day: int = 2, author: str | None = "octocat") -> dict[str, Any]:
-    return {"body": body, "author": _author(author), "createdAt": f"2026-06-0{day}T00:00:00Z"}
+def conversation_comment(
+    body: str,
+    day: int = 2,
+    author: str | None = "octocat",
+    node_id: str | None = None,
+    reactions: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return {
+        "id": node_id if node_id is not None else f"conversation-{day}",
+        "reactionGroups": reactions or [],
+        "body": body,
+        "author": _author(author),
+        "createdAt": f"2026-06-0{day}T00:00:00Z",
+    }
+
+
+def reaction_group(
+    content: str,
+    *,
+    viewer_has_reacted: bool = True,
+    reacted_at: str | None = None,
+    others_reacted_at: list[str] | None = None,
+) -> dict[str, Any]:
+    viewer = [{"createdAt": reacted_at, "user": {"isViewer": True}}] if reacted_at is not None else []
+    others = [{"createdAt": at, "user": {"isViewer": False}} for at in others_reacted_at or []]
+
+    return {"content": content, "viewerHasReacted": viewer_has_reacted, "reactions": [*viewer, *others]}
 
 
 def _author(login: str | None) -> dict[str, Any] | None:
@@ -179,7 +215,7 @@ def wire_story_graph(
 
         return {}, {"data": {"repository": {"issue": _node_of(universe, variables["number"])}}}
 
-    repo.requester.graphql_query.side_effect = respond
+    repo.requester.graphql_query.side_effect = _answering_reactions(respond, [*universe, *pulls])
 
 
 def wire_slice_graph(
@@ -189,6 +225,78 @@ def wire_slice_graph(
     full_name: str = "acme/sample",
 ) -> None:
     wire_story_graph(repo, *nodes, pull_requests=pull_requests, full_name=full_name)
+
+
+def _answering_reactions(
+    respond: Callable[[str, dict[str, Any]], tuple[dict[str, Any], dict[str, Any]]],
+    nodes: list[dict[str, Any]],
+) -> Callable[[str, dict[str, Any]], tuple[dict[str, Any], dict[str, Any]]]:
+    def answer(document: str, variables: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        if _ADD_REACTION_MARKER in document:
+            _react(nodes, variables["subject"], variables["content"])
+            return {}, {"data": {"addReaction": {"reaction": {"content": variables["content"]}}}}
+
+        if _REMOVE_REACTION_MARKER in document:
+            _unreact(nodes, variables["subject"], variables["content"])
+            return {}, {"data": {"removeReaction": {"reaction": {"content": variables["content"]}}}}
+
+        if _REACTIONS_MARKER in document:
+            return {}, {"data": {"node": {"reactions": {"nodes": _eyes_of(nodes, variables["id"])}}}}
+
+        return respond(document, variables)
+
+    return answer
+
+
+def _react(nodes: list[dict[str, Any]], comment_id: str, content: str) -> None:
+    groups = _comment(nodes, comment_id)["reactionGroups"]
+    group = next((group for group in groups if group["content"] == content), None)
+    if group is None:
+        groups.append(reaction_group(content, reacted_at=_REACTED_AT))
+        return
+
+    if group["viewerHasReacted"]:
+        return
+
+    group["viewerHasReacted"] = True
+    group["reactions"].append({"createdAt": _REACTED_AT, "user": {"isViewer": True}})
+
+
+def _unreact(nodes: list[dict[str, Any]], comment_id: str, content: str) -> None:
+    for group in _comment(nodes, comment_id)["reactionGroups"]:
+        if group["content"] == content:
+            group["viewerHasReacted"] = False
+            group["reactions"] = [reaction for reaction in group["reactions"] if not reaction["user"]["isViewer"]]
+
+
+def _comment(nodes: list[dict[str, Any]], comment_id: str) -> dict[str, Any]:
+    return next(comment for comment in _comments_of(nodes) if comment["id"] == comment_id)
+
+
+def _eyes_of(nodes: list[dict[str, Any]], comment_id: str) -> list[dict[str, Any]]:
+    return [
+        reaction
+        for group in _comment(nodes, comment_id)["reactionGroups"]
+        if group["content"] == "EYES"
+        for reaction in group["reactions"]
+    ]
+
+
+def _comments_of(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    pulls = [pull for node in nodes for pull in node.get("closedByPullRequestsReferences", {"nodes": [node]})["nodes"]]
+    conversation = [comment for pull in pulls for comment in pull.get("comments", {"nodes": []})["nodes"]]
+    threads = [thread for pull in pulls for thread in pull.get("reviewThreads", {"nodes": []})["nodes"]]
+    inline = [comment for thread in threads for comment in thread["comments"]["nodes"]]
+
+    return conversation + inline
+
+
+def reactions_added(repo: Any) -> list[tuple[str, str]]:
+    calls = repo.requester.graphql_query.call_args_list
+
+    return [
+        (call.args[1]["subject"], call.args[1]["content"]) for call in calls if _ADD_REACTION_MARKER in call.args[0]
+    ]
 
 
 def story_pages(repo: Any) -> list[int]:

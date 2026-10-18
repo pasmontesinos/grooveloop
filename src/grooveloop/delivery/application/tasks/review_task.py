@@ -19,6 +19,7 @@ class ReviewTask:
             "confirmation.\n\n"
             "You only annotate: do not fix code, do not push, do not approve, do not merge or close the Pull "
             "Request; the decision belongs to the human.\n\n"
+            f"{self._declined_changes_section(a_slice)}"
             f"{self._journal_instructions_section(a_slice, journal_enabled)}"
             f"{self._journal_entries_section(a_slice, repo, journal_enabled)}"
             "Close the review in TWO STEPS AND IN THIS ORDER.\n\n"
@@ -57,6 +58,19 @@ class ReviewTask:
             "that ENDS with the marker on its own line: `<!-- grooveloop:review -->`. If you already wrote one of "
             "the two, do not repeat it. You only annotate: do not fix code or push. Do not run commands in the "
             "background or end your turn waiting for a task. You work in autonomous mode: do not ask questions."
+        )
+
+    def _declined_changes_section(self, a_slice: Slice) -> str:
+        if not a_slice.declines_the_changes():
+            return ""
+
+        return (
+            "The developer declined to change code for the changes requested in the previous round, either by the "
+            "human's `/grooveloop-implement` directives or by the findings of the previous review: instead of pushing "
+            "commits, they explained why in a comment of the Pull Request that ends with the marker "
+            "`<!-- grooveloop:no-changes -->`. Read the requested changes and that reply, and judge whether the "
+            "reason holds: if it does, the verdict depends only on the code; if it does not, the requested changes "
+            "are still findings of this review.\n\n"
         )
 
     def _journal_instructions_section(self, a_slice: Slice, journal_enabled: bool) -> str:

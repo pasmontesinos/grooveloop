@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>grooveloop</title>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-FZ23MC55NP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { dataLayer.push(arguments); }
+  gtag('js', new Date());
+  gtag('config', 'G-FZ23MC55NP');
+</script>
+<meta name="description" content="grooveloop: a personal CLI loop that drives the delivery of a change with coding agents, from spec to merge, with you in control.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='27' fill='none' stroke='%233d3d5c' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%23b388ff' stroke-width='3.5'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%2300e5ff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* Layout: a 1120px central column on a night background; the glow comes from the hero and the accents.
+     A single dark theme, on purpose. */
+  :root {
+    --bg: #07070b;
+    --panel: #0c0c13;
+    --panel-2: #10101a;
+    --line: #1e1e2e;
+    --fg: #f2f2f8;
+    --muted: #9aa0b5;
+    --dim: #565d72;
+    --cyan: #00e5ff;
+    --violet: #b388ff;
+    --amber: #ffd54f;
+    --green: #69f0ae;
+    --pink: #ff6b9d;
+    --display: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: var(--display); font-size: 16.5px; line-height: 1.65;
+    margin: 0; padding-inline: clamp(16px, 4vw, 44px); padding-block: 0 56px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin-inline: auto; }
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 4px; }
+  h1, h2, h3 { margin: 0; line-height: 1.1; letter-spacing: -.025em; text-wrap: balance; }
+  p { margin: 0; }
+  code { font-family: var(--mono); font-size: .88em; }
+
+  /* language: the wrapper carries data-lang; the other block is hidden */
+  #page[data-lang="en"] .es { display: none !important; }
+  #page[data-lang="es"] .en { display: none !important; }
+
+  /* brand pulse: quarter note at 60, sharp attack, soft decay */
+  @keyframes pulse60 { 0% { opacity: 1; } 65% { opacity: 0; } 100% { opacity: 0; } }
+  .pulse-dot { animation: pulse60 1s cubic-bezier(.3,0,.6,1) infinite; }
+  @media (prefers-reduced-motion: reduce) { .pulse-dot { animation: none; } }
+
+  /* ---------- nav ---------- */
+  .nav { display: flex; align-items: center; gap: 18px; padding-block: 20px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 11px; font: 700 17px/1 var(--mono); color: var(--fg); letter-spacing: -.01em; }
+  .brand svg { width: 30px; height: 30px; }
+  .nav ul { display: flex; flex-wrap: wrap; gap: 10px 22px; list-style: none; margin: 0 0 0 auto; padding: 0; font-size: 14.5px; }
+  .nav ul a { color: var(--muted); }
+  .nav ul a:hover { color: var(--cyan); text-decoration: none; }
+  @media (max-width: 800px) { .nav ul { display: none; } }
+  .lang { display: flex; gap: 2px; margin-left: 18px; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  @media (max-width: 800px) { .lang { margin-left: auto; } }
+  .lang button { font: 600 12px/1 var(--mono); background: none; border: 0; color: var(--muted); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+  .lang button.on { background: var(--cyan); color: var(--bg); box-shadow: 0 0 16px rgba(0,229,255,.5); }
+
+  /* ---------- hero ---------- */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr); gap: 52px; align-items: center; padding-block: 76px 90px; position: relative; }
+  @media (max-width: 940px) { .hero { grid-template-columns: minmax(0,1fr); gap: 44px; padding-block: 56px 64px; } }
+  .hero::before { content: ""; position: absolute; inset: -140px -10% auto; height: 520px; pointer-events: none;
+    background: radial-gradient(ellipse at 74% 18%, rgba(124,77,255,.5), transparent 58%),
+                radial-gradient(ellipse at 22% 4%, rgba(0,229,255,.32), transparent 55%);
+    filter: blur(18px); }
+  .hero > * { position: relative; }
+  .eyebrow { font: 600 12.5px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .eyebrow b { color: var(--cyan); text-shadow: 0 0 14px rgba(0,229,255,.8); }
+  .hero h1 { font-size: clamp(38px, 5.2vw, 64px); font-weight: 800; margin-top: 20px; max-width: 15ch; }
+  .hero h1 em { font-style: normal; background: linear-gradient(90deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 22px rgba(0,229,255,.35)); }
+  .lede { color: var(--muted); font-size: clamp(16.5px, 1.8vw, 19px); max-width: 56ch; margin-top: 22px; }
+  .lede strong { color: var(--fg); font-weight: 600; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .btn { display: inline-flex; align-items: center; gap: 9px; font: 600 15px/1 var(--display); padding: 13px 22px; border-radius: 999px; cursor: pointer; }
+  .btn.primary { background: linear-gradient(90deg, var(--cyan), var(--violet)); color: var(--bg); box-shadow: 0 0 28px rgba(124,77,255,.55); }
+  .btn.ghost { border: 1px solid var(--line); color: var(--fg); background: transparent; }
+  .btn:hover { text-decoration: none; filter: brightness(1.12); }
+  .hero-notes { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 26px; font: 500 12.5px/1.5 var(--mono); color: var(--dim); }
+  .hero-notes span::before { content: "● "; color: var(--cyan); font-size: 8px; vertical-align: 2px; }
+
+  /* fictional terminal */
+  .term { background: #040407; border: 1px solid #23233a; border-radius: 12px; overflow: hidden;
+    box-shadow: inset 0 0 60px rgba(124,77,255,.07), 0 0 0 1px rgba(0,229,255,.06), 0 30px 80px -30px rgba(0,229,255,.25); }
+  .term-bar { display: flex; align-items: center; gap: 7px; padding: 11px 15px; border-bottom: 1px solid #1a1a2a; font: 500 12px/1 var(--mono); color: var(--dim); }
+  .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: #232336; }
+  .term-bar span { margin-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .term pre { margin: 0; padding: 16px 18px 20px; font: 12.5px/1.8 var(--mono); color: #aab2c8; overflow-x: auto; white-space: pre; }
+  .t-c { color: var(--cyan); } .t-v { color: var(--violet); } .t-g { color: var(--green); }
+  .t-a { color: var(--amber); } .t-p { color: var(--pink); } .t-d { color: var(--dim); }
+
+  /* ---------- sections ---------- */
+  section { padding-block: 84px 0; }
+  .label { font: 600 12.5px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--cyan); text-shadow: 0 0 12px rgba(0,229,255,.6); }
+  .sec-head { display: grid; gap: 14px; max-width: 740px; margin-bottom: 44px; }
+  .sec-head h2 { font-size: clamp(30px, 4.4vw, 50px); font-weight: 800; }
+  .sec-head p { color: var(--muted); font-size: 18px; max-width: 58ch; }
+  .sec-head p strong { color: var(--fg); font-weight: 600; }
+
+  /* chores */
+  .chores { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+  @media (max-width: 900px) { .chores { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 580px) { .chores { grid-template-columns: minmax(0,1fr); } }
+  .chore { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 22px; display: grid; gap: 9px; align-content: start; min-width: 0; }
+  .chore .was { font: 500 12px/1.5 var(--mono); color: var(--dim); text-decoration: line-through; text-decoration-color: rgba(255,107,157,.75); }
+  .chore h3 { font-size: 19px; font-weight: 700; }
+  .chore p { color: var(--muted); font-size: 14.5px; }
+  .chore code { color: var(--cyan); font-size: .85em; }
+
+  /* what stays yours */
+  .bookends { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+  @media (max-width: 760px) { .bookends { grid-template-columns: minmax(0,1fr); } }
+  .bookend { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 28px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .bookend .when { font: 600 12px/1 var(--mono); letter-spacing: .07em; text-transform: uppercase; color: var(--amber); text-shadow: 0 0 10px rgba(255,213,79,.5); }
+  .bookend h3 { font-size: 26px; font-weight: 800; }
+  .bookend p, .bookend li { color: var(--muted); font-size: 15.5px; }
+  .bookend ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  .bookend code { color: var(--cyan); font-size: .85em; }
+
+  /* cycle */
+  .cycle { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 48px; align-items: center; }
+  @media (max-width: 880px) { .cycle { grid-template-columns: minmax(0,1fr); } }
+  .groove-art { display: flex; justify-content: center; }
+  .groove-art svg { width: 100%; max-width: 420px; height: auto; }
+
+  /* capabilities */
+  .features { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 36px 34px; }
+  @media (max-width: 900px) { .features { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 580px) { .features { grid-template-columns: minmax(0,1fr); } }
+  .feat { display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .feat h3 { font-size: 20px; font-weight: 700; }
+  .feat p { color: var(--muted); font-size: 15px; }
+  .feat code { color: var(--cyan); font-size: .85em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chip { font: 500 12px/1 var(--mono); padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .chip.glow { border-color: #0a5a66; color: var(--cyan); box-shadow: 0 0 12px rgba(0,229,255,.25); }
+
+  /* cockpit mockup */
+  .cockpit { background: #040407; border: 1px solid #23233a; border-radius: 14px; overflow: hidden;
+    box-shadow: inset 0 0 60px rgba(124,77,255,.07), 0 0 0 1px rgba(0,229,255,.06), 0 30px 80px -30px rgba(0,229,255,.25); }
+  .ck-bar { display: flex; align-items: center; gap: 7px; padding: 11px 15px; border-bottom: 1px solid #1a1a2a; font: 500 12px/1 var(--mono); color: var(--dim); }
+  .ck-bar i { width: 10px; height: 10px; border-radius: 50%; background: #232336; }
+  .ck-zones { display: grid; grid-template-columns: 198px minmax(0,1.65fr) minmax(0,1fr); gap: 12px; padding: 18px 14px 12px; font: 11px/1.7 var(--mono); color: #aab2c8; }
+  @media (max-width: 980px) { .ck-zones { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .ck-zones .rail { grid-column: 1 / -1; } }
+  @media (max-width: 640px) { .ck-zones { grid-template-columns: minmax(0,1fr); } }
+  .ck-zones.max { grid-template-columns: minmax(0,1fr); }
+  .zone.span { grid-column: 2 / -1; }
+  @media (max-width: 980px) { .zone.span { grid-column: 1 / -1; } }
+  .zone { position: relative; border: 1px solid #2a2a44; border-radius: 9px; padding: 12px 12px 10px; min-width: 0; }
+  .zone .zb { overflow-x: auto; min-width: 0; }
+  .zone.focus { border-color: rgba(0,229,255,.45); box-shadow: 0 0 18px rgba(0,229,255,.12); }
+  .zone .zt { position: absolute; top: -9px; left: 12px; background: #040407; padding: 0 6px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .zone.focus .zt { color: var(--cyan); }
+  .ztabs { display: flex; gap: 16px; padding-bottom: 3px; margin-bottom: 8px; border-bottom: 1px solid #1a1a2a; color: var(--dim); white-space: nowrap; }
+  .ztabs b { color: var(--cyan); font-weight: 600; text-shadow: 0 0 10px rgba(0,229,255,.5); box-shadow: 0 2px 0 var(--cyan); }
+  .ln { white-space: pre; }
+  .ln.sel { background: rgba(0,229,255,.08); outline: 1px solid rgba(0,229,255,.35); border-radius: 4px; margin-inline: -4px; padding-inline: 4px; }
+  .ln.hd { color: var(--fg); font-weight: 600; }
+  .ln.dimrow { color: var(--dim); }
+  .chip { padding: 0 5px; border-radius: 4px; }
+  .chip.merged { color: var(--green); background: rgba(105,240,174,.12); }
+  .chip.pr_open { color: var(--violet); background: rgba(179,136,255,.14); }
+  .chip.dispatched { color: var(--amber); background: rgba(255,213,79,.14); }
+  .chip.under_review { color: var(--cyan); background: rgba(0,229,255,.12); }
+  .chip.blocked { color: var(--pink); background: rgba(255,107,157,.14); }
+  .chip.pending { color: var(--muted); background: rgba(154,160,181,.12); }
+  .ck-foot { padding: 8px 16px 12px; font: 11.5px/1.6 var(--mono); color: var(--dim); white-space: nowrap; overflow-x: auto; border-top: 1px solid #1a1a2a; }
+  .ck-foot b { color: var(--muted); font-weight: 600; }
+  .ck-caption { font: 400 13px/1.6 var(--display); color: var(--dim); margin-top: 12px; }
+
+  /* conventions + learning */
+  .learn-loop { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; counter-reset: ll; }
+  @media (max-width: 920px) { .learn-loop { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 560px) { .learn-loop { grid-template-columns: minmax(0,1fr); } }
+  .ll-step { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 8px; align-content: start; position: relative; min-width: 0; }
+  .ll-step::before { counter-increment: ll; content: "0" counter(ll); font: 800 30px/1 var(--display); background: linear-gradient(90deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .ll-step h3 { font-size: 17.5px; font-weight: 700; }
+  .ll-step p { color: var(--muted); font-size: 14px; }
+  .ll-step code { color: var(--cyan); font-size: .85em; }
+  .ll-step .who { font: 600 11px/1 var(--mono); letter-spacing: .07em; text-transform: uppercase; color: var(--dim); }
+  .ll-step .who.you { color: var(--amber); }
+  .ll-back { margin-top: 14px; font: 500 13px/1.6 var(--mono); color: var(--dim); display: flex; gap: 10px; align-items: baseline; }
+  .ll-back b { color: var(--cyan); font-weight: 500; text-shadow: 0 0 12px rgba(0,229,255,.5); }
+
+  /* agents */
+  .agents { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 44px; align-items: start; }
+  @media (max-width: 880px) { .agents { grid-template-columns: minmax(0,1fr); } }
+  .agents ul.points { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .agents ul.points li { padding-block: 13px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 15px; display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 12px; }
+  .agents ul.points li::before { content: "▸"; color: var(--violet); font-family: var(--mono); }
+  .agents ul.points strong { color: var(--fg); font-weight: 600; }
+  .agents ul.points code { color: var(--cyan); font-size: .85em; }
+  .profile { background: #040407; border: 1px solid #23233a; border-radius: 12px; overflow: hidden;
+    box-shadow: inset 0 0 50px rgba(124,77,255,.06), 0 24px 70px -30px rgba(124,77,255,.3); }
+  .profile pre { margin: 0; padding: 16px 18px 20px; font: 12.5px/1.8 var(--mono); color: #aab2c8; overflow-x: auto; white-space: pre; }
+
+  /* cockpit: tabs */
+  .ck-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .ck-tabs button { font: 600 13px/1 var(--mono); background: transparent; border: 1px solid var(--line); color: var(--muted); padding: 9px 16px; border-radius: 999px; cursor: pointer; }
+  .ck-tabs button.on { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 16px rgba(0,229,255,.3); }
+  .ck-screen { min-width: 0; }
+  .ck-pane { padding: 16px 18px 20px; font: 12.5px/1.85 var(--mono); overflow-x: auto; }
+  .ck-pane .ln { white-space: pre; color: #aab2c8; }
+  .ck-purpose { font-size: 15px; color: var(--muted); margin-top: 14px; max-width: 72ch; }
+  .ck-purpose strong { color: var(--fg); font-weight: 600; }
+
+  /* install */
+  .install { display: grid; grid-template-columns: minmax(0,.85fr) minmax(0,1.15fr); gap: 44px; align-items: start; }
+  @media (max-width: 860px) { .install { grid-template-columns: minmax(0,1fr); } }
+  .req { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .req li { padding-block: 11px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; color: var(--muted); font-size: 15px; }
+  .req li::before { content: "✓"; color: var(--green); font-family: var(--mono); text-shadow: 0 0 10px rgba(105,240,174,.6); }
+  .cmds { display: grid; gap: 13px; }
+  .cmd { background: #040407; border: 1px solid #23233a; border-radius: 10px; min-width: 0; }
+  .cmd-h { display: flex; justify-content: space-between; align-items: center; padding: 9px 13px 0; font: 500 11px/1 var(--mono); color: var(--dim); letter-spacing: .06em; text-transform: uppercase; }
+  .cmd-h button { background: transparent; border: 1px solid #23233a; color: #aab2c8; font: 500 11px/1 var(--mono); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  .cmd-h button:hover { border-color: var(--cyan); color: var(--cyan); }
+  .cmd pre { margin: 0; padding: 9px 13px 14px; font: 13px/1.7 var(--mono); color: #cfd2e4; overflow-x: auto; white-space: pre; }
+  .cmd pre .p { color: var(--amber); user-select: none; }
+  .cmd pre .cmt { color: var(--dim); }
+
+  /* closing + footer */
+  .closing { padding-block: 100px 0; display: grid; gap: 22px; }
+  .closing h2 { font-size: clamp(36px, 6.4vw, 78px); font-weight: 800; max-width: 17ch; }
+  .closing h2 em { font-style: normal; background: linear-gradient(90deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 24px rgba(124,77,255,.4)); }
+  .gh { display: inline-flex; align-items: center; gap: 7px; margin-left: 14px; font: 600 12.5px/1 var(--mono); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 8px 13px; }
+  .gh:hover { border-color: var(--cyan); color: var(--cyan); text-decoration: none; }
+  .gh svg { width: 15px; height: 15px; fill: currentColor; }
+  @media (max-width: 800px) { .gh { margin-left: 8px; } }
+  .label.sub { display: block; margin: 48px 0 18px; color: var(--muted); text-shadow: none; }
+  .features.caps { margin-top: 64px; }
+  .sec-head + .label.sub { margin-top: 0; }
+  .thesis { margin-top: 44px; font: 800 clamp(24px, 3.4vw, 38px)/1.2 var(--display); letter-spacing: -.02em; text-wrap: balance; }
+  .thesis em { font-style: normal; background: linear-gradient(90deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .uses .chip { padding: 5px 11px; border-radius: 999px; }
+  .uses { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+  footer a { color: var(--muted); }
+  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; margin-top: 64px; padding-top: 26px; border-top: 1px solid var(--line); font: 500 12.5px/1.6 var(--mono); color: var(--dim); }
+</style>
+</head>
+<body>
+
+<div id="page" data-lang="en">
+<div class="wrap">
+
+  <nav class="nav" aria-label="Main">
+    <span class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="27" fill="none" stroke="#2c2c40" stroke-width="2"/>
+        <circle cx="32" cy="32" r="20" fill="none" stroke="#3d3d5c" stroke-width="2"/>
+        <circle cx="32" cy="32" r="13" fill="none" stroke="#b388ff" stroke-width="2.5" style="filter:drop-shadow(0 0 7px rgba(179,136,255,.9))"/>
+        <circle class="pulse-dot" cx="32" cy="32" r="5.5" fill="#00e5ff" style="filter:drop-shadow(0 0 12px rgba(0,229,255,1))"/>
+      </svg>
+      grooveloop
+    </span>
+    <ul>
+      <li><a href="#split"><span class="en">The split</span><span class="es">El reparto</span></a></li>
+      <li><a href="#conventions"><span class="en">Conventions</span><span class="es">Convenciones</span></a></li>
+      <li><a href="#agents"><span class="en">Agents</span><span class="es">Agentes</span></a></li>
+      <li><a href="#cockpit"><span class="en">The cockpit</span><span class="es">El panel de control</span></a></li>
+      <li><a href="#install"><span class="en">Install</span><span class="es">Instalar</span></a></li>
+      <li><a href="#story"><span class="en">The story</span><span class="es">La historia</span></a></li>
+    </ul>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" class="lang-btn on" data-lang="en">EN</button>
+      <button type="button" class="lang-btn" data-lang="es">ES</button>
+    </div>
+    <a class="gh" href="https://github.com/pasmontesinos/grooveloop" aria-label="grooveloop on GitHub"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <div class="eyebrow"><b>● v0.1</b> <span class="en">A personal loop · CLI · agent-driven</span><span class="es">Un loop personal · CLI · conducido por agentes</span></div>
+      <h1><span class="en">Your delivery, <em>always flowing</em>.</span><span class="es">Tu delivery, <em>siempre fluyendo</em>.</span></h1>
+      <p class="lede">
+        <span class="en">Once the agent can implement on its own, what is left is coordination: hand over the spec, launch the implementation, ask for the review, launch the next slice, one repetitive prompt at a time. <strong>grooveloop</strong> takes over that coordination — specs, slices, reviews and merges locked into one steady pulse. You decide; the loop makes sure nothing stalls.</span>
+        <span class="es">Cuando el agente ya implementa solo, lo que queda es coordinación: pasar la spec, lanzar la implementación, pedir la review, lanzar la siguiente slice, a golpe de prompt repetitivo. <strong>grooveloop</strong> se encarga de esa coordinación — specs, slices, revisiones y merges encajados en un solo pulso. Tú decides; el loop no deja que nada se pare.</span>
+      </p>
+      <div class="ctas">
+        <a class="btn primary" href="#install"><span class="en">Install grooveloop</span><span class="es">Instalar grooveloop</span></a>
+        <a class="btn ghost" href="#split"><span class="en">See how it works</span><span class="es">Ver cómo funciona</span></a>
+      </div>
+      <div class="hero-notes">
+        <span><span class="en">You think the Spec</span><span class="es">Tú piensas la Spec</span></span>
+        <span><span class="en">The loop coordinates</span><span class="es">El loop coordina</span></span>
+        <span><span class="en">You validate and steer</span><span class="es">Tú validas y rediriges</span></span>
+      </div>
+    </div>
+
+    <figure class="term" style="margin:0" aria-label="grooveloop running in a terminal (example data)">
+      <div class="term-bar"><i></i><i></i><i></i><span>grooveloop loop --repo acme/shop --workdir ~/code/shop</span></div>
+      <pre><span class="t-d">10:02</span> tick <span class="t-c">#88</span> · story <span class="t-c">#12</span> “Gift cards” · 3/6 slices <span class="t-g">merged</span>
+<span class="t-d">10:02</span> slice <span class="t-c">#15</span> “Balance in cart” dispatchable · deps <span class="t-g">✓</span>
+<span class="t-d">10:03</span> dispatch <span class="t-a">developer</span> (claude · sonnet) → run <span class="t-d">f3a9…</span>
+<span class="t-d">10:19</span> <span class="t-v">PullRequestOpened</span> · PR <span class="t-c">#203</span> → <span class="t-c">under_review</span>
+<span class="t-d">10:21</span> reviewer verdict <span class="t-g">review:approve</span> → <span class="t-v">pr_open</span> · your turn
+<span class="t-d">10:34</span> <span class="t-v">PullRequestMerged</span> → dispatching <span class="t-c">#16</span> and <span class="t-c">#17</span>
+<span class="t-d">10:34</span> <span class="t-d">merge = approve · close = reject</span></pre>
+    </figure>
+  </header>
+
+  <section id="split">
+    <div class="sec-head">
+      <span class="label"><span class="en">The split</span><span class="es">El reparto</span></span>
+      <h2><span class="en">The loop coordinates. You decide.</span><span class="es">El loop coordina. Tú decides.</span></h2>
+      <p>
+        <span class="en">Walking an agent through a multi-slice change is coordination work, not engineering. The loop does it on every tick, with explicit rules you configure, and the state of every slice lives in its sub-issue labels. Nothing merges without you, unless you opt into <code>--auto-merge</code>.</span>
+        <span class="es">Conducir a un agente por un cambio de varias slices es trabajo de coordinación, no de ingeniería. El loop lo hace en cada tick, con reglas explícitas que tú configuras, y el estado de cada slice vive en las labels de su sub-issue. Nada se mergea sin ti, salvo que actives <code>--auto-merge</code>.</span>
+      </p>
+    </div>
+    <span class="label sub"><span class="en">What the loop does</span><span class="es">Lo que hace el loop</span></span>
+    <div class="chores">
+      <div class="chore"><span class="was"><span class="en">pasting each slice into a prompt</span><span class="es">copiar cada slice en un prompt</span></span>
+        <h3><span class="en">Writes each assignment</span><span class="es">Redacta cada encargo</span></h3>
+        <p><span class="en">One sub-issue per slice. The agent gets its profile, the Spec and the Story journal.</span><span class="es">Una sub-issue por slice. El agente recibe su perfil, la Spec y la bitácora de la Story.</span></p></div>
+      <div class="chore"><span class="was"><span class="en">deciding which slice goes next</span><span class="es">decidir qué slice va ahora</span></span>
+        <h3><span class="en">Respects the graph</span><span class="es">Respeta el grafo</span></h3>
+        <p><span class="en">A slice dispatches only when its dependencies are merged, capped by <code>--max-parallel-slices</code>.</span><span class="es">Una slice se despacha solo con sus dependencias mergeadas, con el tope de <code>--max-parallel-slices</code>.</span></p></div>
+      <div class="chore"><span class="was"><span class="en">waiting for the agent to finish</span><span class="es">esperar a que el agente acabe</span></span>
+        <h3><span class="en">Watches the run</span><span class="es">Vigila la ejecución</span></h3>
+        <p><span class="en">Each agent runs detached in its own worktree. The cockpit flags a silent agent as stalled.</span><span class="es">Cada agente corre detached en su propio worktree. El panel de control marca al agente silencioso como stalled.</span></p></div>
+      <div class="chore"><span class="was"><span class="en">doing the first review pass</span><span class="es">hacer la primera pasada de revisión</span></span>
+        <h3><span class="en">Reviews before you</span><span class="es">Revisa antes que tú</span></h3>
+        <p><span class="en">A second agent reads the diff once and leaves its verdict as a label. Your PR arrives pre-screened.</span><span class="es">Un segundo agente lee el diff una vez y deja su veredicto en una label. La PR te llega con el filtro hecho.</span></p></div>
+      <div class="chore"><span class="was"><span class="en">asking for the obvious fixes</span><span class="es">pedir las correcciones obvias</span></span>
+        <h3><span class="en">Fixes what blocks</span><span class="es">Corrige lo bloqueante</span></h3>
+        <p><span class="en">On a blocking verdict, the loop dispatches the correction, up to <code>--max-review-rounds</code> rounds.</span><span class="es">Ante un veredicto bloqueante, despacha la corrección, hasta <code>--max-review-rounds</code> rondas.</span></p></div>
+      <div class="chore"><span class="was"><span class="en">remembering to launch the next one</span><span class="es">acordarte de lanzar el siguiente</span></span>
+        <h3><span class="en">Continues after your merge</span><span class="es">Continúa tras tu merge</span></h3>
+        <p><span class="en">The tick detects your merge and dispatches whatever the graph frees. The Story closes when nothing is left alive.</span><span class="es">El tick detecta tu merge y despacha lo que el grafo libera. La Story se cierra cuando no queda nada vivo.</span></p></div>
+    </div>
+    <span class="label sub"><span class="en">What stays yours</span><span class="es">Lo que queda tuyo</span></span>
+    <div class="bookends">
+      <div class="bookend">
+        <span class="when"><span class="en">Before · creative</span><span class="es">Antes · creativo</span></span>
+        <h3><span class="en">You think the change</span><span class="es">Piensas el cambio</span></h3>
+        <p><span class="en">You brainstorm and close it into a Spec: one Issue with its slices, their order and their dependencies.</span><span class="es">Haces el brainstorming y lo cierras en una Spec: una Issue con sus slices, su orden y sus dependencias.</span></p>
+        <ul>
+          <li><span class="en">The <code>grooveloop:slicing</code> skill helps you cut small, safe slices.</span><span class="es">La skill <code>grooveloop:slicing</code> te ayuda a cortar slices pequeñas y seguras.</span></li>
+          <li><span class="en">Every doubt resolved in the spec is one correction or redirection less once the code is written.</span><span class="es">Cada duda resuelta en la spec es una corrección o una redirección menos cuando el código ya está escrito.</span></li>
+          <li><span class="en">You mark the Issue ready; the loop picks it up.</span><span class="es">Marcas la Issue como lista y el loop la recoge.</span></li>
+        </ul>
+      </div>
+      <div class="bookend">
+        <span class="when"><span class="en">After · important</span><span class="es">Después · importante</span></span>
+        <h3><span class="en">You validate and steer</span><span class="es">Validas y rediriges</span></h3>
+        <p><span class="en">You review each PR on GitHub web, as you already do. If the agent took a path you don't want, you mark another one. Your decision is the only thing that moves the loop forward.</span><span class="es">Revisas cada PR en GitHub web, como ya haces. Si el agente tomó un camino que no quieres, le marcas otro. Tu decisión es lo único que hace avanzar el loop.</span></p>
+        <ul>
+          <li><span class="en"><code>/grooveloop-implement</code> sends the agent back with your comments.</span><span class="es"><code>/grooveloop-implement</code> devuelve al agente con tus comentarios.</span></li>
+          <li><span class="en">Small increments keep each review manageable, and make each merge safe to take to production.</span><span class="es">Los incrementos pequeños mantienen cada review manejable y permiten llevar cada merge a producción de forma segura.</span></li>
+          <li><span class="en"><b>merge</b> approves and <b>close</b> rejects. A rejected slice keeps its branch: the loop never deletes work.</span><span class="es"><b>merge</b> aprueba y <b>close</b> rechaza. Una slice rechazada conserva su rama: el loop nunca borra trabajo.</span></li>
+          <li><span class="en"><code>/grooveloop-learn</code> turns a redirection into a repo convention, via a PR you review.</span><span class="es"><code>/grooveloop-learn</code> convierte una redirección en convención del repo, vía una PR que tú revisas.</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="thesis"><span class="en">You decide. <em>The agent works for you, following your rules.</em></span><span class="es">Tú decides. <em>El agente trabaja para ti, siguiendo tus reglas.</em></span></p>
+  </section>
+
+  <section id="conventions">
+    <div class="sec-head">
+      <span class="label"><span class="en">Conventions & learning</span><span class="es">Convenciones y aprendizaje</span></span>
+      <h2><span class="en">The repo teaches the agent — and learns from you.</span><span class="es">El repo enseña al agente — y aprende de ti.</span></h2>
+      <p>
+        <span class="en">Autonomy without rules produces code you don't want. The real contract is in the repo: <strong>conventions that say how an agent works your code</strong> — architecture, style, testing, process. And they are living documents: every time you steer, the loop offers to distill the lesson back into them.</span>
+        <span class="es">La autonomía sin reglas produce código que no quieres. El contrato real está en el repo: <strong>convenciones que dicen cómo trabaja un agente tu código</strong> — arquitectura, estilo, testing, proceso. Y son documentos vivos: cada vez que rediriges, el loop ofrece destilar la lección de vuelta a ellas.</span>
+      </p>
+    </div>
+    <div class="learn-loop">
+      <div class="ll-step"><span class="who"><span class="en">The repo</span><span class="es">El repo</span></span>
+        <h3><span class="en">Declares its conventions</span><span class="es">Declara sus convenciones</span></h3>
+        <p><span class="en"><code>CLAUDE.md</code> and <code>docs/conventions/</code> per layer: domain, application, infrastructure, testing. The agent reads them before touching code.</span><span class="es"><code>CLAUDE.md</code> y <code>docs/conventions/</code> por capa: dominio, aplicación, infraestructura, testing. El agente las lee antes de tocar código.</span></p></div>
+      <div class="ll-step"><span class="who">grooveloop</span>
+        <h3><span class="en">Works inside them</span><span class="es">Trabaja dentro de ellas</span></h3>
+        <p><span class="en">The developer follows them; the reviewer measures the diff against them. Convention beats general best practice.</span><span class="es">El developer las sigue; el revisor mide el diff contra ellas. La convención gana a la best practice general.</span></p></div>
+      <div class="ll-step"><span class="who you"><span class="en">You</span><span class="es">Tú</span></span>
+        <h3><span class="en">Steer in the PR</span><span class="es">Rediriges en la PR</span></h3>
+        <p><span class="en">Something doesn't fit? Comment and write <code>/grooveloop-implement</code>. The agent redoes it your way.</span><span class="es">¿Algo no encaja? Comenta y escribe <code>/grooveloop-implement</code>. El agente lo rehace a tu manera.</span></p></div>
+      <div class="ll-step"><span class="who">grooveloop</span>
+        <h3><span class="en">Distills the lesson</span><span class="es">Destila la lección</span></h3>
+        <p><span class="en"><code>/grooveloop-learn</code> hands your redirection to the scribe, which uses the <code>grooveloop:conventions</code> skill to open a conventions PR you review. One correction, never twice.</span><span class="es"><code>/grooveloop-learn</code> pasa tu redirección al scribe, que con la skill <code>grooveloop:conventions</code> abre una PR de convenciones que tú revisas. Una corrección, nunca dos veces.</span></p></div>
+    </div>
+    <div class="ll-back"><b>↻</b><span class="en">The merged convention feeds step 01: the next slice is already born knowing it.</span><span class="es">La convención mergeada alimenta el paso 01: la siguiente slice ya nace sabiéndola.</span></div>
+  </section>
+
+  <section id="agents">
+    <div class="sec-head">
+      <span class="label"><span class="en">Agents & capabilities</span><span class="es">Agentes y capacidades</span></span>
+      <h2><span class="en">The agents are yours to shape.</span><span class="es">Los agentes se moldean a tu medida.</span></h2>
+      <p>
+        <span class="en">Every role in the loop — developer, reviewer, verifier, scribe — is an <strong>agent profile in markdown</strong>: readable, versionable, overridable per repo.</span>
+        <span class="es">Cada rol del loop — developer, reviewer, verifier, scribe — es un <strong>perfil de agente en markdown</strong>: legible, versionable y sobreescribible por repo.</span>
+      </p>
+    </div>
+    <div class="agents">
+      <ul class="points">
+        <li><span><span class="en"><strong>Persona and engine.</strong> Each profile declares who the agent is, which engine runs it (<code>claude</code>, <code>opencode</code>) and with which model.</span><span class="es"><strong>Persona y motor.</strong> Cada perfil declara quién es el agente, qué motor lo ejecuta (<code>claude</code>, <code>opencode</code>) y con qué modelo.</span></span></li>
+        <li><span><span class="en"><strong>Skills and context, for any agent.</strong> A profile lists the skills the agent loads and the context files it reads before it starts: your conventions, your TDD workflow, your review checklist.</span><span class="es"><strong>Skills y contexto, para cualquier agente.</strong> Un perfil lista las skills que el agente carga y los ficheros de contexto que lee antes de empezar: tus convenciones, tu workflow de TDD, tu checklist de revisión.</span></span></li>
+        <li><span><span class="en"><strong>Per-repo override.</strong> A profile in <code>.grooveloop/agents/</code> inside the workdir overrides the packaged default field by field: it declares what changes and inherits the rest. Each repo tunes its own crew.</span><span class="es"><strong>Override por repo.</strong> Un perfil en <code>.grooveloop/agents/</code> dentro del workdir sobrescribe el default del paquete campo a campo: declara lo que cambia y hereda el resto. Cada repo afina su propio equipo.</span></span></li>
+        <li><span><span class="en"><strong>A Claude Code plugin.</strong> <code>grooveloop:setup</code> prepares a repo, <code>grooveloop:slicing</code> writes the spec, <code>grooveloop:verify</code> checks a deploy and <code>grooveloop:conventions</code> keeps the conventions in shape.</span><span class="es"><strong>Un plugin de Claude Code.</strong> <code>grooveloop:setup</code> prepara un repo, <code>grooveloop:slicing</code> escribe la spec, <code>grooveloop:verify</code> comprueba un despliegue y <code>grooveloop:conventions</code> mantiene las convenciones en forma.</span></span></li>
+      </ul>
+      <figure class="profile" style="margin:0" aria-label="Agent profile file (example)">
+        <pre><span class="t-d"># .grooveloop/agents/developer.md</span>
+<span class="t-c">---</span>
+<span class="t-v">engine</span>: claude
+<span class="t-v">model</span>: sonnet
+<span class="t-v">skills</span>:
+  - test-driven-development
+  - verification-before-completion
+<span class="t-v">context_files</span>:
+  - docs/conventions/domain.md
+  - docs/conventions/testing.md
+<span class="t-c">---</span>
+<span class="t-a">You implement one slice at a time.</span>
+<span class="t-a">Plan first. Tests before code. Open</span>
+<span class="t-a">a small PR that closes the sub-issue.</span></pre>
+      </figure>
+    </div>
+    <div class="features caps">
+      <div class="feat"><h3><span class="en">Deploy verification</span><span class="es">Verificación del despliegue</span></h3>
+        <p><span class="en">With <code>--verify-deploy</code>, the verifier checks after the merge that the deploy does not degrade the service and that the slice does what it promised.</span><span class="es">Con <code>--verify-deploy</code>, el verifier comprueba tras el merge que el despliegue no degrada el servicio y que la slice hace lo que prometía.</span></p></div>
+      <div class="feat"><h3><span class="en">Cost in plain sight</span><span class="es">Coste a la vista</span></h3>
+        <p><span class="en">Every agent session shows model, tokens, cache %, turns and dollars. <code>grooveloop usage</code> gives the real cost per slice.</span><span class="es">Cada sesión de agente muestra modelo, tokens, % de caché, turnos y dólares. <code>grooveloop usage</code> da el coste real por slice.</span></p></div>
+      <div class="feat"><h3><span class="en">State lives in labels</span><span class="es">El estado vive en labels</span></h3>
+        <p><span class="en">GitHub is the source of truth: each slice moves <code>pending</code> → <code>dispatched</code> → <code>under_review</code> → <code>pr_open</code> → <code>merged</code>, and issues, sub-issues, labels and PRs hold that state. Anyone on the team reads it with no extra tooling.</span><span class="es">GitHub es la fuente de verdad: cada slice pasa por <code>pending</code> → <code>dispatched</code> → <code>under_review</code> → <code>pr_open</code> → <code>merged</code>, e issues, sub-issues, labels y PRs guardan ese estado. Cualquiera del equipo lo lee sin herramientas extra.</span></p></div>
+      <div class="feat"><h3><span class="en">A shared Story journal</span><span class="es">Bitácora de la Story</span></h3>
+        <p><span class="en">Agents working one Story share a journal (<code>note</code>, <code>journal</code>). The reviewer and the next slice know what was decided before.</span><span class="es">Los agentes de una Story comparten bitácora (<code>note</code>, <code>journal</code>). El revisor y la siguiente slice saben qué se decidió antes.</span></p></div>
+      <div class="feat"><h3><span class="en">No server, no broker</span><span class="es">Sin servidor ni broker</span></h3>
+        <p><span class="en">A local CLI. Each tick queries GitHub and detects events. No webhooks, queues or databases to run.</span><span class="es">Un CLI local. Cada tick consulta GitHub y detecta los eventos. Sin webhooks, colas ni bases de datos que mantener.</span></p></div>
+      <div class="feat"><h3><span class="en">Preflight before work</span><span class="es">Preflight antes de trabajar</span></h3>
+        <p><span class="en"><code>grooveloop doctor</code> probes every adapter: GitHub auth, engines and profiles. If something fails, nothing dispatches.</span><span class="es"><code>grooveloop doctor</code> comprueba cada adaptador: autenticación de GitHub, motores y perfiles. Si algo falla, no se despacha nada.</span></p></div>
+    </div>
+  </section>
+
+  <section id="cockpit">
+    <div class="sec-head">
+      <span class="label"><span class="en">The cockpit</span><span class="es">El panel de control</span></span>
+      <h2><span class="en">A TUI cockpit, not a scrolling log.</span><span class="es">Un panel de control en la terminal, no un log que corre.</span></h2>
+      <p>
+        <span class="en"><code>grooveloop watch</code> opens a terminal app over the live loops on your machine. Three views, one question each — where each slice stands and what its PR waits for, what was specified, what was decided along the way. Keyboard-driven, and it never touches GitHub: it only reads the state files each loop publishes. Walk the views below.</span>
+        <span class="es"><code>grooveloop watch</code> abre una app de terminal sobre los loops vivos de tu máquina. Tres vistas, una pregunta cada una — dónde está cada slice y qué espera su PR, qué se especificó, qué se decidió por el camino. Se conduce con el teclado y nunca toca GitHub: solo lee los ficheros de estado que publica cada loop. Recorre las vistas abajo.</span>
+      </p>
+    </div>
+    <div class="ck-tabs" role="tablist" aria-label="Cockpit views">
+      <button type="button" class="on" data-tab="slices">slices</button>
+      <button type="button" data-tab="spec">spec</button>
+      <button type="button" data-tab="journal">journal</button>
+    </div>
+
+    <figure class="cockpit" style="margin:0" aria-label="grooveloop watch cockpit (example data)">
+      <div class="ck-bar"><i></i><i></i><i></i><span style="margin-left:8px">grooveloop watch · acme/shop › #12 Gift cards › 4 Checkout UI</span></div>
+
+      <div class="ck-screen" data-screen="slices">
+        <div class="ck-zones">
+<div class="zone rail"><span class="zt">LOOPS · 1 alive</span><div class="zb">
+<div class="ln"><span class="t-g">▶</span> <b style="color:var(--fg)">acme/shop</b></div>
+<div class="ln"><span class="t-d">  tick </span><span class="t-g">ok</span><span class="t-d"> · 35s ago · 13s</span></div>
+<div class="ln"><span class="t-d">  </span><span class="t-g">▶</span><span class="t-d"> 1 agent · 12m · $3.08</span></div>
+<div class="ln"><span class="t-a">  ⏳ PR #207 awaits review</span></div>
+<div class="ln"> </div>
+<div class="ln"><span class="t-d">NO LOOP</span></div>
+<div class="ln"><span class="t-d">acme/billing     3h ago</span></div>
+<div class="ln"><span class="t-d">acme/catalog     2d ago</span></div>
+</div></div>
+<div class="zone focus"><span class="zt">#12 Gift cards ▼</span><div class="zb">
+<div class="ztabs"><b>Slices</b><span>Spec</span><span>Journal</span></div>
+<div class="ln hd"><span class="t-c">#12</span>  Gift cards   <span class="t-d">WIP · 1 pending · 1 dispatched · 1 pr_open · 3 merged</span></div>
+<div class="ln"> </div>
+<div class="ln">  1  Schema: gift_cards table            <span class="chip merged">● merged</span>      <span class="t-c">#203</span></div>
+<div class="ln">    <span class="t-g">✓</span> <span class="t-d">implement_slice sonnet ⏱   9m12s   $2.10  ▸ 12t 2sk 0sub 31tl</span></div>
+<div class="ln">    <span class="t-g">✓</span> <span class="t-d">review_slice    opus   ⏱   2m40s   $0.84  ▸ 9t 1sk 0sub 14tl</span></div>
+<div class="ln"> </div>
+<div class="ln">  2  Redeem API                 <span class="t-d">← 1</span>      <span class="chip merged">● merged</span>      <span class="t-c">#204</span></div>
+<div class="ln">    <span class="t-g">✓</span> <span class="t-d">implement_slice sonnet ⏱  14m05s   $3.45  ▸ 24t 3sk 0sub 52tl</span></div>
+<div class="ln">    <span class="t-g">✓</span> <span class="t-d">review_slice    opus   ⏱   3m31s   $1.02  ▸ 11t 1sk 0sub 17tl</span></div>
+<div class="ln">    <span class="t-d">✓ lesson </span><span class="t-c">#19</span><span class="t-d">   learned   → PR </span><span class="t-c">#205</span></div>
+<div class="ln"> </div>
+<div class="ln">  3  Balance in cart            <span class="t-d">← 2</span>      <span class="chip merged">● merged</span>      <span class="t-c">#206</span></div>
+<div class="ln">    <span class="t-g">✓</span> <span class="t-d">implement_slice sonnet ⏱  11m48s   $2.87  ▸ 19t 2sk 0sub 40tl</span></div>
+<div class="ln">    <span class="t-g">✓</span> <span class="t-d">review_slice    opus   ⏱   3m02s   $0.91  ▸ 10t 1sk 0sub 15tl</span></div>
+<div class="ln"> </div>
+<div class="ln sel">  4  Checkout UI                <span class="t-d">← 3</span>      <span class="chip pr_open">◐ pr_open</span>     <span class="t-c">#207</span></div>
+<div class="ln">    <span class="t-a">↯</span> <span class="t-d">implement_slice sonnet ⏱   6m40s   $1.37  ▸ —</span><span class="t-d">  interrupted</span></div>
+<div class="ln">    <span class="t-g">✓</span> <span class="t-d">implement_slice sonnet ⏱  18m24s   $4.20  ▸ 38t 3sk 0sub 61tl</span><span class="t-d">  resumed</span></div>
+<div class="ln">    <span class="t-g">✓</span> <span class="t-d">review_slice    opus   ⏱   4m12s   $1.12  ▸ 14t 1sk 0sub 22tl</span><span class="t-g">  minor</span></div>
+<div class="ln"> </div>
+<div class="ln">  5  Emails                     <span class="t-d">← 2</span>      <span class="chip dispatched">◔ dispatched</span></div>
+<div class="ln">    <span class="t-g">▶</span> <span class="t-d">implement_slice sonnet ⏱  12m07s   $3.08  ▸ 21t 2sk 0sub 44tl</span><span class="t-d">  LIVE</span></div>
+<div class="ln">      <span class="t-d">↳ Bash  uv run pytest tests/emails -q</span></div>
+<div class="ln"> </div>
+<div class="ln">  6  Analytics                  <span class="t-d">← 4, 5</span>   <span class="chip pending">○ pending</span>   </div>
+</div></div>
+<div class="zone"><span class="zt">Slice 4 · PR #207</span><div class="zb">
+<div class="ztabs"><b>PR</b><span>Diff</span><span>Comments 2</span></div>
+<div class="ln"><span class="t-c">#207</span> <b style="color:var(--fg)">feat(checkout): gift card balance at</b></div>
+<div class="ln">     <b style="color:var(--fg)">payment step</b></div>
+<div class="ln"><span class="t-g">+184</span> <span class="t-p">−23</span> · 9 files · checks <span class="t-g">✓</span></div>
+<div class="ln">mergeable <span class="t-g">✓</span> · updated 12m ago</div>
+<div class="ln"><span class="t-d">synced 40s ago</span></div>
+<div class="ln"> </div>
+<div class="ln">verdict  <span class="t-g">review:minor</span> <span class="t-d">· round 0 of 3</span></div>
+<div class="ln">         <span class="t-d">pre-human reviewer, before your turn</span></div>
+<div class="ln">summary  <span class="t-d">Totals recompute once; MoneyField</span></div>
+<div class="ln">         <span class="t-d">reused; e2e added. Minor: rename</span></div>
+<div class="ln">         <span class="t-d">the helper.</span></div>
+<div class="ln"> </div>
+<div class="ln"><span class="t-v">your turn</span> <span class="t-d">· merge = approve · close = reject</span></div>
+<div class="ln"><span class="t-d">steer with a comment + /grooveloop-implement</span></div>
+</div></div>
+        </div>
+<div class="ck-foot"><b>⏎</b> expand  <b>tab</b> focus  <b>[</b> prev Story  <b>]</b> next Story  <b>o</b> open in GitHub  <b>f</b> filter  <b>q</b> quit</div>
+      </div>
+
+      <div class="ck-screen" data-screen="spec" hidden>
+        <div class="ck-zones">
+<div class="zone rail"><span class="zt">LOOPS · 1 alive</span><div class="zb">
+<div class="ln"><span class="t-g">▶</span> <b style="color:var(--fg)">acme/shop</b></div>
+<div class="ln"><span class="t-d">  tick </span><span class="t-g">ok</span><span class="t-d"> · 35s ago · 13s</span></div>
+<div class="ln"><span class="t-d">  </span><span class="t-g">▶</span><span class="t-d"> 1 agent · 12m · $3.08</span></div>
+<div class="ln"><span class="t-a">  ⏳ PR #207 awaits review</span></div>
+<div class="ln"> </div>
+<div class="ln"><span class="t-d">NO LOOP</span></div>
+<div class="ln"><span class="t-d">acme/billing     3h ago</span></div>
+<div class="ln"><span class="t-d">acme/catalog     2d ago</span></div>
+</div></div>
+<div class="zone focus span"><span class="zt">#12 Gift cards ▼</span><div class="zb">
+<div class="ztabs"><span>Slices</span><b>Spec</b><span>Journal</span></div>
+<div class="ln hd"><span class="t-c">#12</span>  Gift cards   <span class="t-d">grooveloop · ready_for_implementation</span></div>
+<div class="ln"> </div>
+<div class="ln"><b style="color:var(--fg)">## Spec</b></div>
+<div class="ln">Customers pay part of an order with a gift card. The</div>
+<div class="ln">balance is redeemed at checkout and restored when the</div>
+<div class="ln">order is cancelled. Totals never go below zero.</div>
+<div class="ln"> </div>
+<div class="ln"><b style="color:var(--fg)">## Slices</b></div>
+<div class="ln"><span class="t-g">### Schema: gift_cards table</span></div>
+<div class="ln"><span class="t-d">Table, migration and the GiftCardBalance value object. No endpoint yet: the table ships dark.</span></div>
+<div class="ln"><span class="t-g">### Redeem API</span>                         <span class="t-d">depends on 1</span></div>
+<div class="ln"><span class="t-d">POST /gift-cards/redeem validates the code and the remaining balance; idempotent per order.</span></div>
+<div class="ln"><span class="t-g">### Balance in cart</span>                    <span class="t-d">depends on 2</span></div>
+<div class="ln"><span class="t-d">payable_total() subtracts the balance; totals never go below zero. Behind the gift_cards flag.</span></div>
+<div class="ln"><span class="t-v">### Checkout UI</span>                        <span class="t-d">depends on 3</span></div>
+<div class="ln"><span class="t-d">Payment step shows the applied balance and the remainder to pay by card.</span></div>
+<div class="ln"><span class="t-a">### Emails</span>                             <span class="t-d">depends on 2</span></div>
+<div class="ln"><span class="t-d">Receipt and cancellation emails mention the balance used and restored.</span></div>
+<div class="ln"><span class="t-d">### Analytics                          depends on 4, 5</span></div>
+<div class="ln"><span class="t-d">Redemption and restore events to the analytics pipeline. Flag removed here.</span></div>
+</div></div>
+        </div>
+<div class="ck-foot"><b>⏎</b> expand  <b>tab</b> focus  <b>[</b> prev Story  <b>]</b> next Story  <b>o</b> open in GitHub  <b>f</b> filter  <b>q</b> quit</div>
+      </div>
+
+      <div class="ck-screen" data-screen="journal" hidden>
+        <div class="ck-zones">
+<div class="zone rail"><span class="zt">LOOPS · 1 alive</span><div class="zb">
+<div class="ln"><span class="t-g">▶</span> <b style="color:var(--fg)">acme/shop</b></div>
+<div class="ln"><span class="t-d">  tick </span><span class="t-g">ok</span><span class="t-d"> · 35s ago · 13s</span></div>
+<div class="ln"><span class="t-d">  </span><span class="t-g">▶</span><span class="t-d"> 1 agent · 12m · $3.08</span></div>
+<div class="ln"><span class="t-a">  ⏳ PR #207 awaits review</span></div>
+<div class="ln"> </div>
+<div class="ln"><span class="t-d">NO LOOP</span></div>
+<div class="ln"><span class="t-d">acme/billing     3h ago</span></div>
+<div class="ln"><span class="t-d">acme/catalog     2d ago</span></div>
+</div></div>
+<div class="zone focus span"><span class="zt">#12 Gift cards ▼</span><div class="zb">
+<div class="ztabs"><span>Slices</span><span>Spec</span><b>Journal</b></div>
+<div class="ln"><span class="t-d">filter ·</span> <span class="t-a">constraint</span> · <span class="t-c">decision</span> · <span class="t-v">finding</span> · <span class="t-p">directive</span></div>
+<div class="ln"> </div>
+<div class="ln"><span class="t-d">2h ago</span> · <span class="t-a">constraint</span> · <b style="color:var(--fg)">you</b></div>
+<div class="ln">  checkout must keep the PCI scope untouched</div>
+<div class="ln"><span class="t-d">1h ago</span> · <span class="t-c">decision</span> · <b style="color:var(--fg)">implement_slice #13</b></div>
+<div class="ln">  gift card balance lives in its own table, not in cart</div>
+<div class="ln"><span class="t-d">58m ago</span> · <span class="t-v">finding</span> · <b style="color:var(--fg)">implement_slice #15</b></div>
+<div class="ln">  cart totals recompute in two places; kept one</div>
+<div class="ln"><span class="t-d">41m ago</span> · <span class="t-p">directive</span> · <b style="color:var(--fg)">review_slice #16</b></div>
+<div class="ln">  reuse MoneyField, never a float column</div>
+<div class="ln"><span class="t-d">12m ago</span> · <span class="t-c">decision</span> · <b style="color:var(--fg)">implement_slice #17</b></div>
+<div class="ln">  emails reuse the receipts template engine; no new transactional template</div>
+<div class="ln"><span class="t-d">4m ago</span> · <span class="t-v">finding</span> · <b style="color:var(--fg)">address_review #16</b></div>
+<div class="ln">  MoneyField.zero() already existed in shared/money.py; the first implementation missed it</div>
+<div class="ln"> </div>
+<div class="ln"><span class="t-d">each agent reads the journal before working</span></div>
+</div></div>
+        </div>
+<div class="ck-foot"><b>⏎</b> expand  <b>tab</b> focus  <b>[</b> prev Story  <b>]</b> next Story  <b>o</b> open in GitHub  <b>f</b> filter  <b>q</b> quit</div>
+      </div>
+    </figure>
+
+    <p class="ck-purpose" data-purpose="slices"><strong>Slices</strong> — <span class="en">the Story live: every slice with its order, dependencies, state and PR, and under it every agent session — outcome, model, elapsed, cost, turns, skills, tools — plus the live agent's last action and the lessons it left. The slice under your cursor shows its pull request on the right: size, checks, mergeability, the reviewer's verdict, and the <code>Diff</code> and <code>Comments</code> tabs where you steer with <code>/grooveloop-implement</code>.</span><span class="es">la Story en vivo: cada slice con su orden, dependencias, estado y PR, y debajo cada sesión de agente — resultado, modelo, duración, coste, turnos, skills, tools — más la última acción del agente vivo y las lecciones que dejó. La slice bajo tu cursor muestra su pull request a la derecha: tamaño, checks, mergeabilidad, el veredicto del revisor, y las pestañas <code>Diff</code> y <code>Comentarios</code> donde diriges con <code>/grooveloop-implement</code>.</span></p>
+    <p class="ck-purpose" data-purpose="spec" hidden><strong>Spec</strong> — <span class="en">the loop's entry point, full width: one Issue with the change and its <code>## Slices</code>. You write it; the loop materializes it as sub-issues with order and dependencies.</span><span class="es">la entrada del loop, a todo lo ancho: una Issue con el cambio y su <code>## Slices</code>. Tú la escribes; el loop la materializa en sub-issues con orden y dependencias.</span></p>
+    <p class="ck-purpose" data-purpose="journal" hidden><strong>Journal</strong> — <span class="en">the Story's shared logbook, full width: constraints, decisions, findings and directives. The reviewer and the next slice read it before working.</span><span class="es">la bitácora compartida de la Story, a todo lo ancho: restricciones, decisiones, hallazgos y directivas. El revisor y la siguiente slice la leen antes de trabajar.</span></p>
+    <p class="ck-caption"><span class="en">Example data — your repos, Stories and costs take their place.</span><span class="es">Datos de ejemplo — tus repos, Stories y costes ocupan su lugar.</span></p>
+  </section>
+
+  <section id="install">
+    <div class="sec-head">
+      <span class="label"><span class="en">Install</span><span class="es">Instalar</span></span>
+      <h2><span class="en">From install to the first tick.</span><span class="es">De la instalación al primer tick.</span></h2>
+    </div>
+    <div class="install">
+      <div>
+        <ul class="req">
+          <li><span class="en">Python 3.13 and <code>uv</code></span><span class="es">Python 3.13 y <code>uv</code></span></li>
+          <li><span class="en">GitHub CLI authenticated (<code>gh auth login</code>)</span><span class="es">GitHub CLI autenticado (<code>gh auth login</code>)</span></li>
+          <li><span class="en">An agent engine: Claude Code or opencode</span><span class="es">Un motor de agentes: Claude Code u opencode</span></li>
+          <li><span class="en">A GitHub repo with Issues and sub-issues, and a local checkout of it</span><span class="es">Un repo de GitHub con Issues y sub-issues, y un checkout local</span></li>
+          <li><span class="en">One Issue with a Spec and its <code>## Slices</code>: <code>grooveloop:slicing</code> writes it with you</span><span class="es">Una Issue con una Spec y su <code>## Slices</code>: <code>grooveloop:slicing</code> la escribe contigo</span></li>
+        </ul>
+      </div>
+      <div class="cmds">
+        <div class="cmd"><div class="cmd-h"><span class="en">install</span><span class="es">instalar</span><button type="button" data-copy="uv tool install grooveloop">copy</button></div>
+          <pre><span class="p">$</span> uv tool install grooveloop</pre></div>
+        <div class="cmd"><div class="cmd-h"><span class="en">plugin</span><span class="es">plugin</span><button type="button" data-copy="claude plugin marketplace add pasmontesinos/grooveloop &amp;&amp; claude plugin install grooveloop@grooveloop">copy</button></div>
+          <pre><span class="p">$</span> claude plugin marketplace add pasmontesinos/grooveloop
+<span class="p">$</span> claude plugin install grooveloop@grooveloop
+<span class="cmt"><span class="en"># then ask Claude Code to prepare the repo with grooveloop:setup</span><span class="es"># después pide a Claude Code que prepare el repo con grooveloop:setup</span></span></pre></div>
+        <div class="cmd"><div class="cmd-h">preflight<button type="button" data-copy="grooveloop doctor">copy</button></div>
+          <pre><span class="p">$</span> grooveloop doctor
+<span class="cmt"><span class="en"># probes GitHub auth, engines and agent profiles</span><span class="es"># comprueba GitHub, motores y perfiles de agente</span></span></pre></div>
+        <div class="cmd"><div class="cmd-h">run<button type="button" data-copy="grooveloop loop --repo acme/shop --workdir ~/code/shop">copy</button></div>
+          <pre><span class="p">$</span> grooveloop loop --repo acme/shop --workdir ~/code/shop
+<span class="cmt"><span class="en"># in another terminal: the cockpit</span><span class="es"># en otra terminal: el panel de control</span></span>
+<span class="p">$</span> grooveloop watch</pre></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="story">
+    <div class="cycle">
+      <div class="groove-art">
+        <svg viewBox="0 0 420 420" role="img" aria-label="Concentric groove with the pulse at the center">
+          <circle cx="210" cy="210" r="190" fill="none" stroke="#1c1c2c" stroke-width="1.5"/>
+          <circle cx="210" cy="210" r="150" fill="none" stroke="#23233a" stroke-width="1.5"/>
+          <circle cx="210" cy="210" r="110" fill="none" stroke="#2c2c47" stroke-width="1.5"/>
+          <circle cx="210" cy="210" r="70" fill="none" stroke="#b388ff" stroke-width="2" style="filter:drop-shadow(0 0 8px rgba(179,136,255,.8))"/>
+          <circle class="pulse-dot" cx="210" cy="210" r="11" fill="#00e5ff" style="filter:drop-shadow(0 0 18px rgba(0,229,255,1))"/>
+          <text x="210" y="33" text-anchor="middle" style="font:600 12px 'JetBrains Mono',monospace; fill:#565d72">tick · 120s</text>
+        </svg>
+      </div>
+      <div class="sec-head" style="margin-bottom:0">
+        <span class="label"><span class="en">The story</span><span class="es">La historia</span></span>
+        <h2><span class="en">My way of working with agents, turned into a tool.</span><span class="es">Mi forma de trabajar con agentes, convertida en herramienta.</span></h2>
+        <p>
+          <span class="en">I used to steer the agent in real time, in the same session where the code was being written. As models got better and the repository conventions sharpened with every correction I wrote down, it made more sense to put the weight on the spec and delegate the implementation, until it ran on autopilot up to the pull request. What was left was coordination: handing over the spec, launching, reviewing, launching the next slice, one repetitive prompt after another. grooveloop was born to replace that coordination. Correction rounds, parallel slices and lessons came later, almost on their own.</span>
+          <span class="es">Antes dirigía al agente en tiempo real, en la misma sesión en la que se escribía el código. A medida que los modelos mejoraban y las convenciones del repositorio se afinaban con cada corrección que dejaba por escrito, tenía más sentido poner el peso en la spec y delegar la implementación, hasta que fue en piloto automático hasta la pull request. Lo que quedaba era coordinación: pasar la spec, lanzar, revisar, lanzar la siguiente slice, a golpe de prompt repetitivo. grooveloop nació para sustituir esa coordinación. Las rondas de corrección, las slices en paralelo y las lecciones llegaron después, casi solas.</span>
+        </p>
+        <p>
+          <span class="en">It is not a loop to hand everything over to the agents. It is <strong>a loop with control and continuous improvement</strong>: you think the spec, your merge is the decision, and every redirection can become a convention the next slice already knows.</span>
+          <span class="es">No es un loop para delegarlo todo en los agentes. Es <strong>un loop con control y mejora continua</strong>: tú piensas la spec, tu merge es la decisión, y cada redirección puede convertirse en una convención que la siguiente slice ya conoce.</span>
+        </p>
+        <div class="uses">
+          <span class="chip glow"><span class="en">in daily use</span><span class="es">en uso diario</span></span>
+          <span class="chip"><span class="en">experiments</span><span class="es">experimentos</span></span>
+          <span class="chip"><span class="en">personal projects</span><span class="es">proyectos personales</span></span>
+          <span class="chip"><span class="en">high-impact production projects</span><span class="es">proyectos con alto impacto en producción</span></span>
+        </div>
+      </div>
+    </div>
+    <span class="label sub"><span class="en">Why the name</span><span class="es">Por qué el nombre</span></span>
+    <div class="features">
+      <div class="feat"><h3>groove</h3>
+        <p><span class="en">I am a percussionist. In a musical ensemble, percussion holds the pulse from inside, and everyone locks into it. That steady feel is the groove. The word comes from the groove of a vinyl record, where the needle follows the track without skipping.</span><span class="es">Soy percusionista. En una agrupación musical, la percusión sostiene el pulso desde dentro, y todos encajan en él. Esa sensación estable es el groove. La palabra viene del surco de un disco de vinilo, por donde la aguja avanza sin saltar.</span></p></div>
+      <div class="feat"><h3>groove loop</h3>
+        <p><span class="en">For a producer, the rhythmic pattern that repeats in a loop and carries the song while everything else is built on top. For a developer, a reconciliation loop: on each tick it reads GitHub, detects what changed and acts.</span><span class="es">Para un productor, el patrón rítmico que se repite en bucle y sostiene la canción mientras todo lo demás se construye encima. Para un desarrollador, un bucle de reconciliación: en cada tick lee GitHub, detecta qué ha cambiado y actúa.</span></p></div>
+      <div class="feat"><h3>grooveloop</h3>
+        <p><span class="en">The loop that keeps a change in the groove, from spec to merge, so that nothing stalls between one step and the next.</span><span class="es">El loop que mantiene un cambio en el groove, de la spec al merge, para que nada se atasque entre un paso y el siguiente.</span></p></div>
+    </div>
+  </section>
+
+  <div class="closing">
+    <h2><span class="en">You bring the ideas.<br>The loop keeps them <em>in the groove</em>.</span><span class="es">Tú pones las ideas.<br>El loop las mantiene <em>in the groove</em>.</span></h2>
+  </div>
+
+  <footer>
+    <span>grooveloop · <span class="en">a personal loop by</span><span class="es">un loop personal de</span> <a href="https://github.com/pasmontesinos">Pascual Montesinos</a></span>
+    <span><a href="https://github.com/pasmontesinos/grooveloop">GitHub</a> · <a href="https://pypi.org/project/grooveloop/">PyPI</a> · Apache-2.0</span>
+    <span><span class="en">GitHub is the source of truth · review lives on GitHub web</span><span class="es">GitHub es la fuente de verdad · la revisión vive en GitHub web</span></span>
+  </footer>
+
+</div>
+</div>
+
+<script>
+  (function () {
+    var page = document.getElementById('page');
+    var saved = null;
+    try { saved = localStorage.getItem('gl-lang'); } catch (e) {}
+    setLang(saved === 'es' || saved === 'en' ? saved : 'en');
+
+    document.querySelectorAll('.lang-btn').forEach(function (b) {
+      b.addEventListener('click', function () { setLang(b.dataset.lang); });
+    });
+
+    function setLang(l) {
+      page.dataset.lang = l;
+      document.documentElement.lang = l;
+      document.querySelectorAll('.lang-btn').forEach(function (b) {
+        b.classList.toggle('on', b.dataset.lang === l);
+      });
+      try { localStorage.setItem('gl-lang', l); } catch (e) {}
+    }
+
+    document.querySelectorAll('.ck-tabs button').forEach(function (t) {
+      t.addEventListener('click', function () {
+        document.querySelectorAll('.ck-tabs button').forEach(function (b) { b.classList.toggle('on', b === t); });
+        document.querySelectorAll('.ck-screen').forEach(function (s) { s.hidden = s.dataset.screen !== t.dataset.tab; });
+        document.querySelectorAll('.ck-purpose').forEach(function (p) { p.hidden = p.dataset.purpose !== t.dataset.tab; });
+      });
+    });
+
+    document.querySelectorAll('[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var done = function () { btn.textContent = 'copied'; setTimeout(function () { btn.textContent = 'copy'; }, 1500); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(btn.dataset.copy).then(done).catch(function () { fallback(); });
+        } else { fallback(); }
+        function fallback() {
+          var pre = btn.closest('.cmd').querySelector('pre');
+          var r = document.createRange(); r.selectNodeContents(pre);
+          var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        }
+      });
+    });
+  })();
+</script>
+</body>
+</html>

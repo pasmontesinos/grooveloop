@@ -6,7 +6,7 @@ GitHub holds the state of every Story and slice, and Claude Code is the default 
 
 ## A personal loop
 
-grooveloop is my own way of working with coding agents, turned into a tool. It started when I was carrying specs, slices, implementations, reviews and deliveries by hand across several agent sessions at once: steps got forgotten and sessions stalled. I automated that workflow, and I keep refining it with every change it delivers.
+grooveloop is my own way of working with coding agents, turned into a tool. I used to steer the agent in real time, in the same session where the code was being written. As models got better and the repository conventions sharpened with every correction I wrote down, it made more sense to put the weight on the spec and delegate the implementation, until it ran on autopilot up to the pull request. What was left was coordination: handing over the spec, launching, reviewing, launching the next slice, one repetitive prompt after another. grooveloop was born to replace that coordination. Correction rounds, parallel slices and lessons came later, almost on their own. I keep refining it with every change it delivers.
 
 I use it every day, on experiments, on personal projects and on projects with a high impact in production. That is why it is not a loop to hand everything over to the agents. It is a loop with control:
 
@@ -110,7 +110,7 @@ The loop keeps the state of each slice in the labels of its sub-issue:
 |---|---|
 | `pending`, `dispatched`, `under_review`, `pr_open`, `changes_requested`, `blocked`, `merged`, `failed` | Lifecycle state of the slice. |
 | `review:approve`, `review:minor`, `review:blocking`, `review:blocked` | Verdict of the automated reviewer. |
-| `review-round:N` | Automatic correction rounds already spent. |
+| `review-round:N` | Automatic correction rounds already spent. A correction may also rebut the findings of a `review:blocking` verdict, without commits, with a reasoned pull request comment ending with `<!-- grooveloop:no-changes -->`; the reviewer then judges the rebuttal, and a new blocking verdict spends another round. |
 | `retry:N`, `failure:<cause>` | Retries of the current phase, and the cause when the slice fails for good. |
 | `story:N`, `order:N`, `run:<id>`, `pr:N` | Links to the Story, the position, the agent run and the pull request. |
 
@@ -124,6 +124,10 @@ Write a directive **at the start of a line** in a pull request comment, in the c
 - `/grooveloop-learn` marks a lesson. The `scribe` agent turns it into a pull request against the repository conventions.
 
 A directive quoted (`>`) or mentioned in the middle of a sentence does not count.
+
+The loop marks the `/grooveloop-implement` directives it consumes with reactions on their comment: 👀 when a correction takes them and 🚀 when that correction ends with commits or with the developer's reasoned reply that nothing must change (a pull request comment ending with `<!-- grooveloop:no-changes -->`). Either way the reviewer checks the correction, and judges whether the reason for declining holds. A directive without 🚀 is still pending, so a directive written while a correction is running goes into the next round, and removing the 🚀 of a directive re-opens it. The loop reacts with the account of its `gh` token; if that is your own account, do not add 👀 or 🚀 to your directives yourself. A pull request on which the loop has not marked any directive yet keeps the previous rule: a directive is pending while no commit is newer than it.
+
+The loop also adds 🚀 to each `/grooveloop-learn` comment it includes in a lesson. A `/grooveloop-learn` without 🚀 on a merged pull request becomes a new lesson with only the comments not captured yet, even if the pull request already has one; while a lesson of the pull request is still being refined, the new comments wait for it. Only the 🚀 counts: a `/grooveloop-learn` without it is not captured, whenever it was written, so do not add 🚀 to your own learn comments if the loop reacts with your account.
 
 To pause a Story, relabel its `pending` slices as `blocked`. To resume, relabel those slices back as `pending`. Do not touch a `blocked` slice that has a `review:blocked` verdict or a `pr:N` label: it waits for your decision on an open pull request, and you resolve it with a merge, a close or `/grooveloop-implement`. To retry a `failed` slice, relabel it as `pending`.
 

@@ -121,7 +121,9 @@ class TestResumeReviewPhaseCommandHandler:
         assert a_slice.review_rounds == 1
         assert a_slice.agent_run_id == "resumed-run"
 
-    def test_should_resume_the_correction_that_finished_without_new_commits(self) -> None:
+    def test_should_resume_the_correction_that_finished_without_new_commits_asking_to_push_or_to_explain(
+        self,
+    ) -> None:
         repository = FakeSliceRepository(
             {StoryId("10"): [_slice_with_a_pull_request_and_an_agent_run(SliceStatus.CHANGES_REQUESTED)]}
         )
@@ -134,6 +136,8 @@ class TestResumeReviewPhaseCommandHandler:
         assert a_slice is not None
         assert agent_runner.resumed_count == 1
         assert "push to the PR branch" in agent_runner.last_resume_instruction
+        assert "`gh pr comment 42`" in agent_runner.last_resume_instruction
+        assert "<!-- grooveloop:no-changes -->" in agent_runner.last_resume_instruction
         assert a_slice.status == SliceStatus.CHANGES_REQUESTED
         assert a_slice.retries == 1
         assert a_slice.agent_run_id == "resumed-run"

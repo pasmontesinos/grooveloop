@@ -24,9 +24,15 @@ def _cache() -> GithubReadCache:
     return GithubReadCache(clock)
 
 
-def _issue_comment(body: str) -> Any:
+_CAPTURED_AT = datetime(2026, 6, 10, tzinfo=UTC)
+_AFTER_THE_CAPTURE = datetime(2026, 6, 11, tzinfo=UTC)
+_BEFORE_THE_CAPTURE = datetime(2026, 6, 9, tzinfo=UTC)
+
+
+def _issue_comment(body: str, created_at: datetime = _AFTER_THE_CAPTURE) -> Any:
     comment = create_autospec(IssueComment, spec_set=True, instance=True)
     comment.body = body
+    comment.created_at = created_at
 
     return comment
 
@@ -39,11 +45,12 @@ def _pull(number: int, issue_comments: list[Any]) -> Any:
     return pull
 
 
-def _pr_issue(number: int, body: str) -> Any:
+def _pr_issue(number: int, body: str, created_at: datetime = _AFTER_THE_CAPTURE) -> Any:
     issue = create_autospec(Issue, spec_set=True, instance=True)
     issue.number = number
     issue.pull_request = object()
     issue.body = body
+    issue.created_at = created_at
 
     return issue
 
@@ -63,7 +70,7 @@ class TestGithubRefinementResult:
         conventions = _pr_issue(101, "Refines the convention.\n<!-- grooveloop:lesson pr=42 -->")
         result = GithubRefinementResult(_repo([_pull(42, [])], [conventions]), _cache())
 
-        outcome = result.of(SourcePullRequest(42))
+        outcome = result.of(SourcePullRequest(42), _CAPTURED_AT)
 
         assert outcome is not None
         assert outcome.conventions_pull_request == ConventionsPullRequest(101)
@@ -73,7 +80,7 @@ class TestGithubRefinementResult:
         pull = _pull(42, [_issue_comment("Nothing to codify.\n<!-- grooveloop:learned discarded -->")])
         result = GithubRefinementResult(_repo([pull], []), _cache())
 
-        outcome = result.of(SourcePullRequest(42))
+        outcome = result.of(SourcePullRequest(42), _CAPTURED_AT)
 
         assert outcome is not None
         assert outcome.conventions_pull_request is None
@@ -82,14 +89,33 @@ class TestGithubRefinementResult:
     def test_reports_no_result_while_the_scribe_has_not_produced_one(self) -> None:
         result = GithubRefinementResult(_repo([_pull(42, [])], []), _cache())
 
-        assert result.of(SourcePullRequest(42)) is None
+        assert result.of(SourcePullRequest(42), _CAPTURED_AT) is None
 
     def test_prefers_the_conventions_pull_request_over_a_discard_marker(self) -> None:
         conventions = _pr_issue(101, "Refines the convention.\n<!-- grooveloop:lesson pr=42 -->")
         pull = _pull(42, [_issue_comment("Nothing to codify.\n<!-- grooveloop:learned discarded -->")])
         result = GithubRefinementResult(_repo([pull], [conventions]), _cache())
 
-        outcome = result.of(SourcePullRequest(42))
+        outcome = result.of(SourcePullRequest(42), _CAPTURED_AT)
 
         assert outcome is not None
         assert outcome.conventions_pull_request == ConventionsPullRequest(101)
+
+    def test_reports_the_conventions_pull_request_opened_after_the_capture_of_the_lesson(self) -> None:
+        earlier = _pr_issue(101, "<!-- grooveloop:lesson pr=42 -->", created_at=_BEFORE_THE_CAPTURE)
+        later = _pr_issue(120, "<!-- grooveloop:lesson pr=42 -->", created_at=_AFTER_THE_CAPTURE)
+        result = GithubRefinementResult(_repo([_pull(42, [])], [later, earlier]), _cache())
+
+        outcome = result.of(SourcePullRequest(42), _CAPTURED_AT)
+
+        assert outcome is not None
+        assert outcome.conventions_pull_request == ConventionsPullRequest(120)
+
+    def test_ignores_the_results_of_a_lesson_captured_earlier_from_the_same_pull_request(self) -> None:
+        conventions = _pr_issue(101, "<!-- grooveloop:lesson pr=42 -->", created_at=_BEFORE_THE_CAPTURE)
+        pull = _pull(
+            42, [_issue_comment("Nothing.\n<!-- grooveloop:learned discarded -->", created_at=_BEFORE_THE_CAPTURE)]
+        )
+        result = GithubRefinementResult(_repo([pull], [conventions]), _cache())
+
+        assert result.of(SourcePullRequest(42), _CAPTURED_AT) is None

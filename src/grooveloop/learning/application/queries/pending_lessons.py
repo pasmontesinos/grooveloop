@@ -22,13 +22,14 @@ class PendingLessonsQueryHandler(QueryHandler[PendingLessonsQuery, PendingLesson
         self._conventions_pull_request_status = conventions_pull_request_status
 
     def __call__(self, query: PendingLessonsQuery) -> PendingLessonsQueryResult:
-        lessons = {lesson.source_pull_request.value: lesson for lesson in self._lesson_repository.search()}
+        lessons = self._lesson_repository.search()
 
         pending = [
-            pending_lesson_dto_from_domain(lessons[number])
+            pending_lesson_dto_from_domain(lesson)
             for number in query.pull_request_numbers
-            if number in lessons
-            and not lessons[number].is_resolved(self._is_conventions_pull_request_open(lessons[number]))
+            for lesson in lessons
+            if lesson.source_pull_request.value == number
+            and not lesson.is_resolved(self._is_conventions_pull_request_open(lesson))
         ]
 
         return PendingLessonsQueryResult(pending_lessons=pending)
