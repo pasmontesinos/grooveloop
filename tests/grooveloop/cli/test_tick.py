@@ -1341,6 +1341,63 @@ class TestTick:
 
         assert repo.create_issue.call_count == 1
 
+    def test_should_capture_a_second_lesson_with_only_the_learn_comment_not_marked_by_the_loop(self) -> None:
+        story_issue = create_autospec(Issue, spec_set=True, instance=True)
+        story_issue.number = 7
+        story_issue.title = "feature"
+        story_issue.body = "## Slices\n### First\n"
+        story_issue.labels = [_label("grooveloop"), _label("sliced")]
+        story_issue.pull_request = None
+        first = _sub_issue(12, "story:7", "merged", "pr:40")
+        lesson_issue = _sub_issue(500, "grooveloop", "lesson", "source_pr:40", "story:7", "learning:discarded")
+        lesson_issue.state = "closed"
+        lesson_issue.created_at = datetime(2026, 6, 3, tzinfo=UTC)
+        repo = create_autospec(Repository, spec_set=True, instance=True)
+        repo.get_issue.side_effect = {7: story_issue, 12: first, 500: lesson_issue}.__getitem__
+        repo.get_issues.side_effect = lambda *args, **kwargs: [lesson_issue]
+        wire_slice_graph(
+            repo,
+            slice_node(7, "grooveloop", "sliced", title="feature", body=story_issue.body),
+            slice_node(
+                12,
+                "story:7",
+                "merged",
+                "pr:40",
+                state="CLOSED",
+                pull_request=pr_node(
+                    40,
+                    state="MERGED",
+                    merged=True,
+                    conversation=[
+                        conversation_comment(
+                            "/grooveloop-learn already captured",
+                            day=2,
+                            node_id="IC_OLD",
+                            reactions=[reaction_group("ROCKET")],
+                        ),
+                        conversation_comment("/grooveloop-learn written after the capture", day=5, node_id="IC_NEW"),
+                    ],
+                ),
+            ),
+        )
+        github = create_autospec(Github, spec_set=True, instance=True)
+        github.get_repo.return_value = repo
+
+        with (
+            container.override(Github, github),
+            container.override(AgentRunner, FakeAgentRunner()),
+            container.override(AgentRunnerRegistry, FakeAgentRunnerRegistry(FakeAgentRunner())),
+            container.override(AgentWorkdir, AgentWorkdir("/tmp/wd")),
+        ):
+            tick.run("acme/sample", "/tmp/wd")
+
+        repo.create_issue.assert_called_once()
+        body = repo.create_issue.call_args.kwargs["body"]
+        assert "written after the capture" in body
+        assert "already captured" not in body
+        assert "source_pr:40" in repo.create_issue.call_args.kwargs["labels"]
+        assert reactions_added(repo) == [("IC_NEW", "ROCKET")]
+
     def test_should_read_github_again_on_the_tick_that_follows_another_tick(self) -> None:
         lesson_issue = _sub_issue(500, "grooveloop", "lesson", "source_pr:42", "story:7", "learning:in_progress")
         lesson_issue.state = "open"

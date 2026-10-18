@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from grooveloop.learning.domain.conventions_pull_request import ConventionsPullRequest
 from grooveloop.learning.domain.events import LessonDiscarded, LessonLearned
 from grooveloop.learning.domain.lesson import Lesson
@@ -15,19 +17,34 @@ from tests.playground.shared.infrastructure.fake_refinement_result import FakeRe
 _STORY = StoryId("10")
 
 
-def _in_progress(number: int, story_id: StoryId | None = _STORY) -> Lesson:
+def _in_progress(
+    number: int, story_id: StoryId | None = _STORY, captured_at: datetime = datetime(2026, 1, 1, tzinfo=UTC)
+) -> Lesson:
     return Lesson(
         id=None,
         source_pull_request=SourcePullRequest(number),
         story_id=story_id,
         status=LessonStatus.IN_PROGRESS,
-        comments=[LessonComment(body="x", path="", line=0, diff_hunk="")],
+        comments=[LessonComment(body="x", path="", line=0, diff_hunk="", id=None)],
         conventions_pull_request=None,
         open=True,
+        captured_at=captured_at,
     )
 
 
 class TestRefinementOutcomeDetector:
+    def test_asks_for_the_result_produced_since_the_capture_of_each_lesson(self) -> None:
+        captured_at = datetime(2026, 10, 16, 10, 0, tzinfo=UTC)
+        refinement_result = FakeRefinementResult()
+        detector = RefinementOutcomeDetector(
+            refinement_result=refinement_result,
+            lesson_repository=FakeLessonRepository(lessons=[_in_progress(42, captured_at=captured_at)]),
+        )
+
+        list(detector.detect())
+
+        assert refinement_result.asked == [(42, captured_at)]
+
     def test_emits_lesson_learned_with_the_conventions_pull_request(self) -> None:
         repository = FakeLessonRepository()
         repository.save(_in_progress(42))

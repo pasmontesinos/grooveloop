@@ -13,7 +13,7 @@ Aggregates (one repository per aggregate, see "Ports"; each one lives in its con
 - **Story** (`slicing`) — the parent Issue. It holds the **`Spec`** of the change (value object with its slices, order and dependencies already parsed). `Story.materialize_slices(verify_deploy)` turns the Spec into the `slicing` `Slice`s that become sub-issues; `Story.complete()` closes it.
 - **Slice** (`delivery`) — the work item of each sub-issue. It carries its dependencies and, **once its PR is anchored, its `PullRequest`** (with the review comments) **inside the aggregate itself**. It moves through the state machine below.
 - **SliceVerification** (`verification`) — the verification of a merged slice: `EMPTY → RUNNING → CONCLUDED`, or `RUNNING → FAILED`.
-- **Lesson** (`learning`) — the lesson captured from the `/grooveloop-learn` comments of a merged PR: `IN_PROGRESS → LEARNED | DISCARDED`, then closed.
+- **Lesson** (`learning`) — the lesson captured from the `/grooveloop-learn` comments of a merged PR: `IN_PROGRESS → LEARNED | DISCARDED`, then closed. A PR can have several lessons, one per capture, and at most one `IN_PROGRESS` (see "Lessons" below).
 - **JournalEntry** (`journal`) — an entry of the Story journal. It has no life cycle.
 
 The "Slice" concept is modeled differently in each context: in `slicing` it is an item of the Spec with its order and dependencies by position; in `delivery` it is the work item with a life cycle; in `verification` it is the verification of a merged one. Each context declares its own `SliceId`; they share the value (the sub-issue number), not the class.
@@ -157,6 +157,12 @@ Rules:
 - **With `--auto-merge`, the loop merges the approved PR.** `Slice.is_auto_mergeable()` (slice in `PR_OPEN` with verdict `approve` or `minor`) decides which PR is a candidate; `MergePullRequestCommandHandler` only squash-merges it if the `PullRequestMerger` port reports it as `Mergeability.CLEAN`, and otherwise the slice stays in `PR_OPEN`. The loop does not record the merge: the merge detector recognizes it on the next tick, like a human's. Without the flag, the loop does not query mergeability.
 - **Merge and close are recognized from any intermediate state.** The human can merge or close the PR between two ticks, before any of them records the intermediate `pr_open` (the `Closes #N` closes the sub-issue and leaves the slice in `dispatched`). That is why `MERGED` and `FAILED` are reachable from `DISPATCHED`, `UNDER_REVIEW`, `PR_OPEN`, `CHANGES_REQUESTED` and `BLOCKED`: recognizing a resolved PR (merged or closed without merging) marks the slice in its correct terminal state without depending on having recorded the previous `pr_open`.
 
+## Lessons
+
+- **The loop marks the `/grooveloop-learn` comments it captures.** When `RefineConventionsCommandHandler` captures a lesson, it dispatches the scribe, saves the lesson and adds the loop's 🚀 to each learn comment the lesson includes, through the `LessonCommentMarker` port (`GithubLessonCommentMarker`), never through `save`. `LearnSignal.comments_of` reads that reaction into `LessonComment.captured` (a 🚀 of another account is not a mark).
+- **A learn comment is captured if and only if it carries the loop's 🚀** (`uncaptured_comments(comments)`), whenever it was written and whatever lessons its PR has: a comment written between the tick's read of the PR and the creation of the lesson's issue is not in the lesson, gets no 🚀 and becomes the next lesson. There is no rule for the PRs learned before the marks: their learn comments carry no 🚀, so they become a new lesson. A merged PR with uncaptured comments produces a new lesson with only those comments, even if it already has lessons.
+- **A PR has at most one lesson `IN_PROGRESS`.** `LessonCapturedDetector` and `RefineConventionsCommandHandler` capture nothing on a PR whose lesson is still being refined, so the new comments wait for it. That keeps the scribe's results keyed by the PR (`<!-- grooveloop:lesson pr=N -->` in the conventions PR, `<!-- grooveloop:learned discarded -->` in the PR conversation): the result of a lesson is the first one created at or after its `captured_at` (`RefinementResult.of(source_pull_request, since)`), and `LearnLessonCommandHandler` and `DiscardLessonCommandHandler` act on the PR's lesson in progress. A lesson whose scribe never produces a result keeps the later comments of its PR waiting.
+
 ## Ordering and dependencies (DAG)
 
 - The order inside a Story is the `SliceOrder` VO of `slicing`, which becomes the `order:N` label; `SliceRepository.search()` returns the slices of a Story sorted by it.
@@ -171,13 +177,13 @@ Rules:
 
 - Domain interfaces with **ABC** and `@abstractmethod`. Each port in its own file, in the `domain/` of the context that owns it. The ports of the application layer (`QueryBus`, `EventDispatcher`, `Probe`) live in `shared/application/`.
 
-Project ports: **one repository per aggregate** — `StoryRepository` (`slicing`), `SliceRepository` (`delivery`), `SliceVerificationRepository` (`verification`), `LessonRepository` (`learning`) and `JournalEntryRepository` (`journal`) —; the read ports `AgentSessionRepository` (`delivery`) and `AgentRunContextRepository` (`journal`); the context ports `SliceLabels`, `PullRequestMerger`, `DirectiveMarker`, `MergedSliceSignal`, `LearnSignal`, `RefinementResult` and `ConventionsPullRequestStatus`; and the `shared` ports listed in `architecture.md` (`Clock`, `AgentRunner`, `AgentRunnerRegistry`, `AgentCommand`, `AgentLogReader`...). See [ADR-0004](../adr/0004-ports-and-adapters.md). There is no "god" repository spanning several aggregates.
+Project ports: **one repository per aggregate** — `StoryRepository` (`slicing`), `SliceRepository` (`delivery`), `SliceVerificationRepository` (`verification`), `LessonRepository` (`learning`) and `JournalEntryRepository` (`journal`) —; the read ports `AgentSessionRepository` (`delivery`) and `AgentRunContextRepository` (`journal`); the context ports `SliceLabels`, `PullRequestMerger`, `DirectiveMarker`, `MergedSliceSignal`, `LearnSignal`, `LessonCommentMarker`, `RefinementResult` and `ConventionsPullRequestStatus`; and the `shared` ports listed in `architecture.md` (`Clock`, `AgentRunner`, `AgentRunnerRegistry`, `AgentCommand`, `AgentLogReader`...). See [ADR-0004](../adr/0004-ports-and-adapters.md). There is no "god" repository spanning several aggregates.
 
 ### Repository method signatures
 
 - `save(entity: Entity) -> None`
 - `find(id: EntityId) -> Entity | None`
-- `find_by_<unique_key>(value: ValueObject) -> Entity | None` — lookup by another unique key of the aggregate (`LessonRepository.find_by_source_pull_request`).
+- `find_by_<unique_key>(value: ValueObject) -> Entity | None` — lookup by another unique key of the aggregate. No repository needs one today: the source PR of a `Lesson` is not unique (a PR can have several lessons), so it is a `search()` criterion.
 - `search(*optional_filters) -> list[Entity]`
 
 A repository only declares the methods its callers use (`JournalEntryRepository` has no `find`).
@@ -220,13 +226,15 @@ class LessonRepository(ABC):
     def find(self, id: LessonId) -> Lesson | None: ...
 
     @abstractmethod
-    def find_by_source_pull_request(self, source_pull_request: SourcePullRequest) -> Lesson | None: ...
-
-    @abstractmethod
     def save(self, lesson: Lesson) -> None: ...
 
     @abstractmethod
-    def search(self, status: LessonStatus | None = None, story_id: StoryId | None = None) -> list[Lesson]: ...
+    def search(
+        self,
+        status: LessonStatus | None = None,
+        story_id: StoryId | None = None,
+        source_pull_request: SourcePullRequest | None = None,
+    ) -> list[Lesson]: ...
 ```
 
 ### Criteria vs projections in query ports

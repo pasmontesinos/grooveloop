@@ -9,3 +9,5 @@ class LessonComment:
     path: str
     line: int
     diff_hunk: str
+    id: str | None
+    captured: bool = False
