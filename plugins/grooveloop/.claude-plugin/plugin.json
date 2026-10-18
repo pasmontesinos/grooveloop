@@ -1,6 +1,6 @@
 {
   "name": "grooveloop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Skills that describe the contract of the grooveloop orchestrator, versioned with the code that implements it",
   "author": {
     "name": "Pascual Montesinos"
