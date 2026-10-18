@@ -55,7 +55,7 @@ release-please (`.github/workflows/release-please.yml`) computes the version fro
 - A contract or CLI flag change is marked as breaking (`feat!:`, or a `BREAKING CHANGE:` footer) and bumps the minor version.
 - The other types do not release.
 
-The version lives in four places that must match: `pyproject.toml`, `plugins/grooveloop/.claude-plugin/plugin.json`, the `grooveloop` entry of `uv.lock` and `.release-please-manifest.json`. release-please bumps all four (`release-please-config.json`); `tests/grooveloop/test_release_metadata.py` fails when the plugin or the manifest differ from the package, and `uv sync --locked` fails when the lock does.
+The version lives in five places that must match: `pyproject.toml`, `plugins/grooveloop/.claude-plugin/plugin.json`, the `grooveloop` entry of `uv.lock`, `.release-please-manifest.json` and the landing (`site/index.html`, the line marked with `<!-- x-release-please-version -->`). release-please bumps all five (`release-please-config.json`); `tests/grooveloop/test_release_metadata.py` fails when the plugin, the manifest or the landing differ from the package, and `uv sync --locked` fails when the lock does.
 
 **To release:**
 

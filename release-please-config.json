@@ -18,6 +18,10 @@
           "type": "toml",
           "path": "uv.lock",
           "jsonpath": "$.package[?(@.name.value=='grooveloop')].version"
+        },
+        {
+          "type": "generic",
+          "path": "site/index.html"
         }
       ]
     }
